@@ -1,0 +1,806 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<robot
+  name="Solo12">
+
+  <link
+    name="Base">
+    <inertial>
+      <origin
+        xyz="-0.00082966 0.00000105 -0.00060210"
+        rpy="0 0 0" />
+      <mass
+        value="1.25123725" />
+      <inertia
+        ixx="0.00266220"
+        ixy="-0.00003684"
+        ixz="-0.00001716"
+        iyx="-0.00003684"
+        iyy="0.01388510"
+        iyz="-0.00000009"
+        izx="-0.00001716"
+        izy="-0.00000009"
+        izz="0.01605370" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo_12_base.STL" />
+      </geometry>
+      <material
+        name="base">
+        <color
+          rgba="0.376 0.376 0.376 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo_12_base.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <link
+    name="Hip_FR">
+    <inertial>
+      <origin
+        xyz="-0.09407251 0.00438935 -0.00001384"
+        rpy="0 0 0" />
+      <mass
+        value="0.14196048" />
+      <inertia
+        ixx="0.00002802"
+        ixy="-0.00003687"
+        ixz="0.00000009"
+        iyx="-0.00003687"
+        iyy="0.00038264"
+        iyz="0.00000000"
+        izx="0.00000009"
+        izy="0.00000000"
+        izz="0.00038050" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_fr.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_fr.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_hip_fr"
+    type="revolute">
+    <origin
+      xyz="0.2141 -0.0875 0"
+      rpy="0 0 0" />
+    <parent
+      link="Base" />
+    <child
+      link="Hip_FR" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Hip_FL">
+    <inertial>
+      <origin
+        xyz="-0.09407251 -0.00438935 0.00001384"
+        rpy="0 0 0" />
+      <mass
+        value="0.2" />
+      <inertia
+        ixx="0.00002802"
+        ixy="0.00003687"
+        ixz="-0.00000009"
+        iyx="0.00003687"
+        iyy="0.00038264"
+        iyz="0.00000000"
+        izx="-0.00000009"
+        izy="0.00000000"
+        izz="0.00038050" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_fl.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_fl.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_hip_fl"
+    type="revolute">
+    <origin
+      xyz="0.2141 0.0875 0"
+      rpy="0 0 0" />
+    <parent
+      link="Base" />
+    <child
+      link="Hip_FL" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Hip_HR">
+    <inertial>
+      <origin
+        xyz="0.09407251 0.00438935 0.00001384"
+        rpy="0 0 0" />
+      <mass
+        value="0.14196048" />
+      <inertia
+        ixx="0.00002802"
+        ixy="0.00003687"
+        ixz="0.00000009"
+        iyx="0.00003687"
+        iyy="0.00038264"
+        iyz="0.00000000"
+        izx="0.00000009"
+        izy="0.00000000"
+        izz="0.00038050" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_hr.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_hr.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_hip_hr"
+    type="revolute">
+    <origin
+      xyz="-0.2141 -0.0875 0"
+      rpy="0 0 0" />
+    <parent
+      link="Base" />
+    <child
+      link="Hip_HR" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Hip_HL">
+    <inertial>
+      <origin
+        xyz="0.09407251 -0.00438935 -0.00001384"
+        rpy="0 0 0" />
+      <mass
+        value="0.2" />
+      <inertia
+        ixx="0.00002802"
+        ixy="-0.00003687"
+        ixz="-0.00000009"
+        iyx="-0.00003687"
+        iyy="0.00038264"
+        iyz="0.00000000"
+        izx="-0.00000009"
+        izy="0.00000000"
+        izz="0.00038050" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_hl.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_hip_fe_hl.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_hip_hl"
+    type="revolute">
+    <origin
+      xyz="-0.2141 0.0875 0"
+      rpy="0 0 0" />
+    <parent
+      link="Base" />
+    <child
+      link="Hip_HL" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Upper_FR">
+    <inertial>
+      <origin
+        xyz="-0.00001530 -0.01767640 -0.07838230"
+        rpy="0 0 0" />
+      <mass
+        value="0.14737324" />
+      <inertia
+        ixx="0.00041540"
+        ixy="0.00000000"
+        ixz="-0.00000010"
+        iyx="0.00000000"
+        iyy="0.00041637"
+        iyz="0.00004589"
+        izx="-0.00000010"
+        izy="0.00004589"
+        izz="0.00002982" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_right_side_1.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_right_side_1.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_upper_fr"
+    type="revolute">
+    <origin
+      xyz="-0.0195 -0.014 0"
+      rpy="0 0 0" />
+    <parent
+      link="Hip_FR" />
+    <child
+      link="Upper_FR" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Upper_HR">
+    <inertial>
+      <origin
+        xyz="-0.00001530 -0.01767640 -0.07838230"
+        rpy="0 0 0" />
+      <mass
+        value="0.14737324" />
+      <inertia
+        ixx="0.00041540"
+        ixy="0.00000000"
+        ixz="-0.00000010"
+        iyx="0.00000000"
+        iyy="0.00041637"
+        iyz="0.00004589"
+        izx="-0.00000010"
+        izy="0.00004589"
+        izz="0.00002982" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_right_side_2.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_right_side_2.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_upper_hr"
+    type="revolute">
+    <origin
+      xyz="0.0195 -0.014 0"
+      rpy="0 0 0" />
+    <parent
+      link="Hip_HR" />
+    <child
+      link="Upper_HR" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Upper_FL">
+    <inertial>
+      <origin
+        xyz="0.00001530 0.01767640 -0.07838230"
+        rpy="0 0 0" />
+      <mass
+        value="0.14737324" />
+      <inertia
+        ixx="0.00041540"
+        ixy="0.00000000"
+        ixz="0.00000010"
+        iyx="0.00000000"
+        iyy="0.00041637"
+        iyz="-0.00004589"
+        izx="0.00000010"
+        izy="-0.00004589"
+        izz="0.00002982" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_left_side_1.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_left_side_1.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_upper_fl"
+    type="revolute">
+    <origin
+      xyz="-0.0195 0.014 0"
+      rpy="0 0 0" />
+    <parent
+      link="Hip_FL" />
+    <child
+      link="Upper_FL" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Upper_HL">
+    <inertial>
+      <origin
+        xyz="0.00001530 0.01767640 -0.07838230"
+        rpy="0 0 0" />
+      <mass
+        value="0.14737324" />
+      <inertia
+        ixx="0.00041540"
+        ixy="0.00000000"
+        ixz="0.00000010"
+        iyx="0.00000000"
+        iyy="0.00041637"
+        iyz="-0.00004589"
+        izx="0.00000010"
+        izy="-0.00004589"
+        izz="0.00002982" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_left_side_2.stl" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_upper_leg_left_side_2.stl" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_upper_hl"
+    type="revolute">
+    <origin
+      xyz="0.0195 0.014 0"
+      rpy="0 0 0" />
+    <parent
+      link="Hip_HL" />
+    <child
+      link="Upper_HL" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Lower_FR">
+    <inertial>
+      <origin
+        xyz="0.00000000 -0.00776716 -0.07003876"
+        rpy="0 0 0" />
+      <mass
+        value="0.02318294" />
+      <inertia
+        ixx="0.00008508"
+        ixy="0.00000000"
+        ixz="0.00000000"
+        iyx="0.00000000"
+        iyy="0.00008580"
+        iyz="0.00000200"
+        izx="0.00000000"
+        izy="0.00000200"
+        izz="0.00000139" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_right_side_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_right_side_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_lower_fr"
+    type="revolute">
+    <origin
+      xyz="0 -0.03745 -0.16"
+      rpy="0 0 0" />
+    <parent
+      link="Upper_FR" />
+    <child
+      link="Lower_FR" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Lower_HR">
+    <inertial>
+      <origin
+        xyz="0.00000000 -0.00776716 -0.07003876"
+        rpy="0 0 0" />
+      <mass
+        value="0.02318294" />
+      <inertia
+        ixx="0.00008508"
+        ixy="0.00000000"
+        ixz="0.00000000"
+        iyx="0.00000000"
+        iyy="0.00008580"
+        iyz="0.00000200"
+        izx="0.00000000"
+        izy="0.00000200"
+        izz="0.00000139" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_right_side_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_right_side_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_lower_hr"
+    type="revolute">
+    <origin
+      xyz="0 -0.03745 -0.16"
+      rpy="0 0 0" />
+    <parent
+      link="Upper_HR" />
+    <child
+      link="Lower_HR" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Lower_FL">
+    <inertial>
+      <origin
+        xyz="0.00000000 0.00776716 -0.07003876"
+        rpy="0 0 0" />
+      <mass
+        value="0.02318294" />
+      <inertia
+        ixx="0.00008508"
+        ixy="0.00000000"
+        ixz="0.00000000"
+        iyx="0.00000000"
+        iyy="0.00008580"
+        iyz="-0.00000200"
+        izx="0.00000000"
+        izy="-0.00000200"
+        izz="0.00000139" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_left_side_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_left_side_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_lower_fl"
+    type="revolute">
+    <origin
+      xyz="0 0.03745 -0.16"
+      rpy="0 0 0" />
+    <parent
+      link="Upper_FL" />
+    <child
+      link="Lower_FL" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+  <link
+    name="Lower_HL">
+    <inertial>
+      <origin
+        xyz="0.00000000 0.00776716 -0.07003876"
+        rpy="0 0 0" />
+      <mass
+        value="0.02318294" />
+      <inertia
+        ixx="0.00008508"
+        ixy="0.00000000"
+        ixz="0.00000000"
+        iyx="0.00000000"
+        iyy="0.00008580"
+        iyz="-0.00000200"
+        izx="0.00000000"
+        izy="-0.00000200"
+        izz="0.00000139" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_left_side_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176 0.752941176 0.752941176 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="solo12_lower_leg_v2_left_side_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint
+    name="motor_lower_hl"
+    type="revolute">
+    <origin
+      xyz="0 0.03745 -0.16"
+      rpy="0 0 0" />
+    <parent
+      link="Upper_HL" />
+    <child
+      link="Lower_HL" />
+    <axis
+      xyz="0 -1 0" />
+    <limit
+      lower="-1.57"
+      upper="1.57"
+      effort="20"
+      velocity="100" />
+  </joint>
+
+ </robot>
