@@ -48,7 +48,7 @@
   </link>
 
   <link
-    name="Hip_FR">
+    name="Abduction_FR">
     <inertial>
       <origin
         xyz="-0.09407251 0.00438935 -0.00001384"
@@ -92,7 +92,7 @@
   </link>
 
   <joint
-    name="motor_hip_fr"
+    name="motor_abduction_fr"
     type="revolute">
     <origin
       xyz="0.2141 -0.0875 0"
@@ -100,7 +100,7 @@
     <parent
       link="Base" />
     <child
-      link="Hip_FR" />
+      link="Abduction_FR" />
     <axis
       xyz="1 0 0" />
     <limit
@@ -111,7 +111,7 @@
   </joint>
 
   <link
-    name="Hip_FL">
+    name="Abduction_FL">
     <inertial>
       <origin
         xyz="-0.09407251 -0.00438935 0.00001384"
@@ -155,7 +155,7 @@
   </link>
 
   <joint
-    name="motor_hip_fl"
+    name="motor_abduction_fl"
     type="revolute">
     <origin
       xyz="0.2141 0.0875 0"
@@ -163,7 +163,7 @@
     <parent
       link="Base" />
     <child
-      link="Hip_FL" />
+      link="Abduction_FL" />
     <axis
       xyz="1 0 0" />
     <limit
@@ -174,7 +174,7 @@
   </joint>
 
   <link
-    name="Hip_HR">
+    name="Abduction_HR">
     <inertial>
       <origin
         xyz="0.09407251 0.00438935 0.00001384"
@@ -218,7 +218,7 @@
   </link>
 
   <joint
-    name="motor_hip_hr"
+    name="motor_abduction_hr"
     type="revolute">
     <origin
       xyz="-0.2141 -0.0875 0"
@@ -226,7 +226,7 @@
     <parent
       link="Base" />
     <child
-      link="Hip_HR" />
+      link="Abduction_HR" />
     <axis
       xyz="1 0 0" />
     <limit
@@ -237,7 +237,7 @@
   </joint>
 
   <link
-    name="Hip_HL">
+    name="Abduction_HL">
     <inertial>
       <origin
         xyz="0.09407251 -0.00438935 -0.00001384"
@@ -281,7 +281,7 @@
   </link>
 
   <joint
-    name="motor_hip_hl"
+    name="motor_abduction_hl"
     type="revolute">
     <origin
       xyz="-0.2141 0.0875 0"
@@ -289,7 +289,7 @@
     <parent
       link="Base" />
     <child
-      link="Hip_HL" />
+      link="Abduction_HL" />
     <axis
       xyz="1 0 0" />
     <limit
@@ -344,13 +344,13 @@
   </link>
 
   <joint
-    name="motor_upper_fr"
+    name="motor_hip_fr"
     type="revolute">
     <origin
       xyz="-0.0195 -0.014 0"
       rpy="0 0 0" />
     <parent
-      link="Hip_FR" />
+      link="Abduction_FR" />
     <child
       link="Upper_FR" />
     <axis
@@ -407,13 +407,13 @@
   </link>
 
   <joint
-    name="motor_upper_hr"
+    name="motor_hip_hr"
     type="revolute">
     <origin
       xyz="0.0195 -0.014 0"
       rpy="0 0 0" />
     <parent
-      link="Hip_HR" />
+      link="Abduction_HR" />
     <child
       link="Upper_HR" />
     <axis
@@ -470,13 +470,13 @@
   </link>
 
   <joint
-    name="motor_upper_fl"
+    name="motor_hip_fl"
     type="revolute">
     <origin
       xyz="-0.0195 0.014 0"
       rpy="0 0 0" />
     <parent
-      link="Hip_FL" />
+      link="Abduction_FL" />
     <child
       link="Upper_FL" />
     <axis
@@ -533,13 +533,13 @@
   </link>
 
   <joint
-    name="motor_upper_hl"
+    name="motor_hip_hl"
     type="revolute">
     <origin
       xyz="0.0195 0.014 0"
       rpy="0 0 0" />
     <parent
-      link="Hip_HL" />
+      link="Abduction_HL" />
     <child
       link="Upper_HL" />
     <axis
@@ -596,7 +596,7 @@
   </link>
 
   <joint
-    name="motor_lower_fr"
+    name="motor_knee_fr"
     type="revolute">
     <origin
       xyz="0 -0.03745 -0.16"
@@ -659,7 +659,7 @@
   </link>
 
   <joint
-    name="motor_lower_hr"
+    name="motor_knee_hr"
     type="revolute">
     <origin
       xyz="0 -0.03745 -0.16"
@@ -722,7 +722,7 @@
   </link>
 
   <joint
-    name="motor_lower_fl"
+    name="motor_knee_fl"
     type="revolute">
     <origin
       xyz="0 0.03745 -0.16"
@@ -785,7 +785,7 @@
   </link>
 
   <joint
-    name="motor_lower_hl"
+    name="motor_knee_hl"
     type="revolute">
     <origin
       xyz="0 0.03745 -0.16"

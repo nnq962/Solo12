@@ -1,31 +1,48 @@
 import pybullet as p
 import pybullet_data
-import sys
+import time
 
-# Khởi tạo môi trường PyBullet
-physicsClient = p.connect(p.GUI)  # Mở môi trường với GUI
-p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
-p.setGravity(0, 0, -10)
+# Kết nối với mô phỏng PyBullet
+physicsClient = p.connect(p.GUI)
+p.setAdditionalSearchPath(pybullet_data.getDataPath())  # Đường dẫn tới các tệp dữ liệu URDF
 
-# Kiểm tra xem có đường dẫn được cung cấp qua dòng lệnh không
-if len(sys.argv) < 2:
-    print("Cách sử dụng: python3 test_urdf.py <đường dẫn tới file URDF>")
-    exit(1)
+# Tải mô hình URDF
+robot_id = p.loadURDF("Robot/Simulation/solo12.urdf", [0, 0, 0.5])
+p.createConstraint(robot_id,
+                   -1, -1, -1,
+                   p.JOINT_FIXED,
+                   [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
+# Thiết lập trọng lực
+p.setGravity(0, 0, -9.81)
 
-# Lấy đường dẫn file URDF từ dòng lệnh
-urdf_path = sys.argv[1]
+# Đặt chế độ mô phỏng thực
+p.setRealTimeSimulation(0)
 
-# Load robot từ file URDF
-robot_urdf_path = urdf_path  # Đường dẫn tới file URDF của bạn
-robot_start_pose = [0, 0, 1]  # Vị trí ban đầu của robot
-robot_start_orientation = p.getQuaternionFromEuler([0, 0, 0])  # Hướng ban đầu của robot (ở đây là không xoay)
-robot_id = p.loadURDF(robot_urdf_path, robot_start_pose, robot_start_orientation)
+# Liệt kê các khớp trong mô hình
+num_joints = p.getNumJoints(robot_id)
+joint_info = {p.getJointInfo(robot_id, i)[1].decode('utf-8'): i for i in range(num_joints)}
 
-# Load sàn hoặc giá để đặt robot lên đó
-plane_id = p.loadURDF("plane.urdf")  # Load sàn hoặc giá
-# p.createConstraint(
-#                 robot_id, -1, -1, -1, p.JOINT_FIXED,
-#                 [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
+# Đặt vận tốc cho khớp 'motor_knee_fr'
+knee_joint_id = joint_info['motor_knee_fr']
+p.setJointMotorControl2(bodyUniqueId=robot_id,
+                        jointIndex=knee_joint_id,
+                        controlMode=p.VELOCITY_CONTROL,
+                        force=0)
+p.setJointMotorControl2(bodyUniqueId=robot_id,
+                        jointIndex=knee_joint_id,
+                        controlMode=p.POSITION_CONTROL,
+                        force=0)
 
-while True:
+# Áp dụng momen điều khiển
+p.setJointMotorControl2(bodyUniqueId=robot_id,
+                        jointIndex=knee_joint_id,
+                        controlMode=p.TORQUE_CONTROL,
+                        force=0.5)
+
+# Chạy mô phỏng trong một khoảng thời gian để quan sát kết quả
+for _ in range(10000):
     p.stepSimulation()
+    time.sleep(1. / 240.)
+
+# Ngắt kết nối mô phỏng
+p.disconnect()
