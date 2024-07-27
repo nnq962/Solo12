@@ -1,5 +1,6 @@
 import pybullet as p
 import pybullet_data
+import numpy as np
 import time
 
 # Kết nối với mô phỏng PyBullet
@@ -24,20 +25,21 @@ joint_info = {p.getJointInfo(robot_id, i)[1].decode('utf-8'): i for i in range(n
 
 # Đặt vận tốc cho khớp 'motor_knee_fr'
 knee_joint_id = joint_info['motor_knee_fr']
-p.setJointMotorControl2(bodyUniqueId=robot_id,
-                        jointIndex=knee_joint_id,
-                        controlMode=p.VELOCITY_CONTROL,
-                        force=0)
+# p.setJointMotorControl2(bodyUniqueId=robot_id,
+#                         jointIndex=knee_joint_id,
+#                         controlMode=p.VELOCITY_CONTROL,
+#                         force=0)
 p.setJointMotorControl2(bodyUniqueId=robot_id,
                         jointIndex=knee_joint_id,
                         controlMode=p.POSITION_CONTROL,
-                        force=0)
+                        targetPosition=np.pi/2,
+                        force=10)
 
 # Áp dụng momen điều khiển
-p.setJointMotorControl2(bodyUniqueId=robot_id,
-                        jointIndex=knee_joint_id,
-                        controlMode=p.TORQUE_CONTROL,
-                        force=0.5)
+# p.setJointMotorControl2(bodyUniqueId=robot_id,
+#                         jointIndex=knee_joint_id,
+#                         controlMode=p.TORQUE_CONTROL,
+#                         force=0.5)
 
 # Chạy mô phỏng trong một khoảng thời gian để quan sát kết quả
 for _ in range(10000):

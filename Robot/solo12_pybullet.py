@@ -124,32 +124,34 @@ class Solo12PybulletEnv(gym.Env):
         return applied_motor_torque
 
     def set_motor_torque_by_id(self, motor_id, torque):
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=motor_id,
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0)
-
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=motor_id,
-            controlMode=self.p.POSITION_CONTROL,
-            force=0)
-
+        """
+        Điều khiển theo momen, yêu cầu tắt điều khiển vị trí và vận tốc trước
+        :param motor_id: id của động cơ
+        :param torque: lực điều khiển
+        :return:
+        """
         self.p.setJointMotorControl2(
             bodyIndex=self.solo12,
             jointIndex=motor_id,
             controlMode=self.p.TORQUE_CONTROL,
             force=torque)
 
+    def apply_position_control(self, target_angles):
+        for motor_id, angle in zip(self._motor_id_list, target_angles):
+            self.p.setJointMotorControl2(
+                bodyIndex=self.solo12,
+                jointIndex=motor_id,
+                controlMode=self.p.POSITION_CONTROL,
+                targetPosition=angle,
+                force=10)
+
     def do_simulation(self, n_frames):
         omega = 2 * self.no_of_points * self.frequency
         leg_m_angle_cmd = self.walking_controller.run_elliptical(self.theta)
         self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
-        m_angle_cmd_ext = np.array(leg_m_angle_cmd)
-        m_vel_cmd_ext = np.zeros(12)
+
         for _ in range(n_frames):
-            _ = self.apply_pd_control(m_angle_cmd_ext, m_vel_cmd_ext)
+            self.apply_position_control(leg_m_angle_cmd)
             self.p.stepSimulation()
 
     def step(self, a=None):
