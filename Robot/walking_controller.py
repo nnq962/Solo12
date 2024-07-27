@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import namedtuple
 from Robot import solo12_kinematic
+from Robot import solo12_kinematic_2
 import numpy as np
 
 
@@ -42,12 +43,13 @@ class WalkingController:
         self.gait_type = gait_type
         self.no_of_points = no_of_points
 
-        self.MOTOROFFSETS_Spot = [np.radians(160.2), np.radians(43.28)]
-        self.motor_offsets = [np.radians(90), np.radians(90)]
+        self.motor_offsets = [np.radians(90), np.radians(130)]
+
         self.leg_name_to_sol_branch_HyQ = {'fl': 0, 'fr': 0, 'bl': 1, 'br': 1}
         self.leg_name_to_dir_Laikago = {'fl': 1, 'fr': -1, 'bl': 1, 'br': -1}
         self.leg_name_to_sol_branch_Laikago = {'fl': 0, 'fr': 0, 'bl': 0, 'br': 0}
-        self.Solo12_Kin = solo12_kinematic.Solo12Kinematic()
+
+        self.Solo12_Kin = solo12_kinematic_2.Solo12Kinematic()
 
     def update_leg_theta(self, theta):
         self.front_right.theta = np.fmod(theta + self._phase.front_right, 2 * self.no_of_points)
@@ -69,10 +71,10 @@ class WalkingController:
         legs = self.initialize_leg_state(theta)
 
         # Parameters for elip --------------------
-        step_length = 0.07
-        step_height = 0.05
-        x_center = 0.0
-        y_center = -0.29
+        step_length = 0.
+        step_height = 0.07
+        x_center = 0.05
+        y_center = -0.25
         # ----------------------------------------
 
         x = y = 0
@@ -87,21 +89,20 @@ class WalkingController:
                     flag = 1
                 y = step_height * np.sin(leg_theta) * flag + y_center
 
-            leg.x, leg.y, leg.z = np.array([[np.cos(leg.phi), 0, np.sin(leg.phi)],
-                                            [0, 1, 0],
-                                            [-np.sin(leg.phi), 0, np.cos(leg.phi)]]) @ np.array([x, y, 0])
+            leg.x, leg.y, leg.z = x, y, 0
 
-            leg.z = -leg.z
+            leg.z = 0
+            # Todo: change z
 
             (leg.motor_hip,
              leg.motor_knee,
              leg.motor_abduction) = self.Solo12_Kin.inverse_kinematics(leg.x,
                                                                        leg.y,
-                                                                       leg.z,
-                                                                       self.leg_name_to_sol_branch_HyQ)
+                                                                       leg.z,)
+            # print(np.degrees(leg.motor_hip), np.degrees(leg.motor_knee))
 
-            leg.motor_hip = leg.motor_hip
-            leg.motor_knee = leg.motor_knee
+            leg.motor_hip = leg.motor_hip + self.motor_offsets[0]
+            leg.motor_knee = leg.motor_knee + self.motor_offsets[1]
 
         leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_left.motor_abduction,
                             legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_right.motor_abduction,

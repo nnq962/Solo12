@@ -13,9 +13,10 @@ class Solo12PybulletEnv(gym.Env):
 
     def __init__(self,
                  render=True,
-                 defalut_pos=(0, 0, 0.35),
+                 defalut_pos=(0, 0, 0.34),
                  defalut_ori=(0, 0, 0, 1),
-                 on_rack=False):
+                 on_rack=False,
+                 gait="trot"):
 
         self.render = render
         self.dt = 0.005
@@ -25,21 +26,28 @@ class Solo12PybulletEnv(gym.Env):
         self.no_of_points = 100
         self.frequency = 2.5
         self.theta = 0
-        self.kp = 200
-        self.kd = 10
-        self.clips = 7
+        self.kp = 150
+        self.kd = 1
+        self.clips = 3
         self.on_rack = on_rack
+        self.friction = 0.6
+        self.gait = gait
 
         self.solo12 = None
         self._motor_id_list = None
         self._joint_name_to_id = None
         self.plane = None
 
+        if self.gait is 'trot':
+            self.phase = [0, self.no_of_points, self.no_of_points, 0]
+        elif gait is 'walk':
+            self.phase = [0, self.no_of_points, 3 * self.no_of_points / 2, self.no_of_points / 2]
+
         if self.render:
             self.p = pybullet_client.BulletClient(connection_mode=pybullet.GUI)
         else:
             self.p = pybullet_client.BulletClient()
-        self.walking_controller = walking_controller.WalkingController()
+        self.walking_controller = walking_controller.WalkingController(gait_type=self.gait, phase=self.phase)
 
         self.hard_reset()
 
@@ -60,6 +68,8 @@ class Solo12PybulletEnv(gym.Env):
                                     -1, -1, -1,
                                     self.p.JOINT_FIXED,
                                     [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
+        self.reset_leg()
+        self.set_foot_friction(self.friction)
 
     def build_motor_id_list(self):
         num_joints = self.p.getNumJoints(self.solo12)
@@ -106,8 +116,7 @@ class Solo12PybulletEnv(gym.Env):
         return basevelocity[0]
 
     def set_foot_friction(self, foot_friction):
-        foot_link_id = [3, 7, 11, 15]
-        # Todo: change links
+        foot_link_id = [2, 3, 8, 11]
         for link_id in foot_link_id:
             self.p.changeDynamics(self.solo12, link_id, lateralFriction=foot_friction)
         return foot_friction
@@ -145,13 +154,32 @@ class Solo12PybulletEnv(gym.Env):
                 targetPosition=angle,
                 force=10)
 
+    def reset_leg(self):
+        for motor_id in self._motor_id_list:
+            self.p.resetJointState(
+                self.solo12,
+                motor_id,
+                targetValue=0,
+                targetVelocity=0
+            )
+
+            self.p.setJointMotorControl2(
+                bodyUniqueId=self.solo12,
+                jointIndex=motor_id,
+                controlMode=self.p.VELOCITY_CONTROL,
+                force=0,
+                targetVelocity=0
+            )
+
     def do_simulation(self, n_frames):
         omega = 2 * self.no_of_points * self.frequency
         leg_m_angle_cmd = self.walking_controller.run_elliptical(self.theta)
         self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
-
+        leg_m_angle_cmd = np.array(leg_m_angle_cmd)
+        leg_m_angle_vel = np.zeros(12)
         for _ in range(n_frames):
-            self.apply_position_control(leg_m_angle_cmd)
+            # self.apply_position_control(leg_m_angle_cmd)
+            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
             self.p.stepSimulation()
 
     def step(self, a=None):
