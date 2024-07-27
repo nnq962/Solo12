@@ -5,5 +5,5 @@ a, b = robot.build_motor_id_list()
 print(a)
 print(b)
 while True:
-    robot.step()
+    robot.p.stepSimulation()
 

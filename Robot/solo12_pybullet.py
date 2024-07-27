@@ -26,8 +26,8 @@ class Solo12PybulletEnv(gym.Env):
         self.no_of_points = 100
         self.frequency = 2.5
         self.theta = 0
-        self.kp = 150
-        self.kd = 1
+        self.kp = 80
+        self.kd = 10
         self.clips = 3
         self.on_rack = on_rack
         self.friction = 0.6
@@ -69,6 +69,7 @@ class Solo12PybulletEnv(gym.Env):
                                     self.p.JOINT_FIXED,
                                     [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
         self.reset_leg()
+        self.reset_abd()
         self.set_foot_friction(self.friction)
 
     def build_motor_id_list(self):
@@ -155,21 +156,124 @@ class Solo12PybulletEnv(gym.Env):
                 force=10)
 
     def reset_leg(self):
-        for motor_id in self._motor_id_list:
-            self.p.resetJointState(
-                self.solo12,
-                motor_id,
-                targetValue=0,
-                targetVelocity=0
-            )
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_hip_fl"],
+            targetValue=-0.7, targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_knee_fl"],
+            targetValue=1.4, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_hip_fl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_knee_fl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
 
-            self.p.setJointMotorControl2(
-                bodyUniqueId=self.solo12,
-                jointIndex=motor_id,
-                controlMode=self.p.VELOCITY_CONTROL,
-                force=0,
-                targetVelocity=0
-            )
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_hip_fr"],
+            targetValue=-0.7, targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_knee_fr"],
+            targetValue=1.4, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_hip_fr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_knee_fr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_hip_hl"],
+            targetValue=0.7, targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_knee_hl"],
+            targetValue=-1.4, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_hip_hl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_knee_hl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_hip_hr"],
+            targetValue=0.7, targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_knee_hr"],
+            targetValue=-1.4, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_hip_hr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_knee_hr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+
+    def reset_abd(self):
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_abduction_fl"],
+            targetValue=0,
+            targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_abduction_fr"],
+            targetValue=0,
+            targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_abduction_hl"],
+            targetValue=0,
+            targetVelocity=0)
+        self.p.resetJointState(
+            self.solo12,
+            self._joint_name_to_id["motor_abduction_hr"],
+            targetValue=0,
+            targetVelocity=0)
+
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_abduction_fl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_abduction_fr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_abduction_hl"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
+        self.p.setJointMotorControl2(
+            bodyIndex=self.solo12,
+            jointIndex=self._joint_name_to_id["motor_abduction_hr"],
+            controlMode=self.p.VELOCITY_CONTROL,
+            force=0, targetVelocity=0)
 
     def do_simulation(self, n_frames):
         omega = 2 * self.no_of_points * self.frequency
