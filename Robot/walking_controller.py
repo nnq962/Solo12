@@ -43,13 +43,9 @@ class WalkingController:
         self.gait_type = gait_type
         self.no_of_points = no_of_points
 
-        self.motor_offsets = [np.radians(90), np.radians(130)]
-
-        self.leg_name_to_sol_branch_HyQ = {'fl': 0, 'fr': 0, 'bl': 1, 'br': 1}
-        self.leg_name_to_dir_Laikago = {'fl': 1, 'fr': -1, 'bl': 1, 'br': -1}
-        self.leg_name_to_sol_branch_Laikago = {'fl': 0, 'fr': 0, 'bl': 0, 'br': 0}
-
-        self.Solo12_Kin = solo12_kinematic_2.Solo12Kinematic()
+        self.motor_offsets = [np.radians(90), np.radians(0)]
+        self.leg_name_to_sol_branch_Solo12 = {'fl': 1, 'fr': 1, 'bl': 0, 'br': 0}
+        self.Solo12_Kin = solo12_kinematic.Solo12Kinematic()
 
     def update_leg_theta(self, theta):
         self.front_right.theta = np.fmod(theta + self._phase.front_right, 2 * self.no_of_points)
@@ -71,10 +67,10 @@ class WalkingController:
         legs = self.initialize_leg_state(theta)
 
         # Parameters for elip --------------------
-        step_length = 0.09
-        step_height = 0.09
+        step_length = 0.1
+        step_height = 0.06
         x_center = 0.
-        y_center = -0.23
+        y_center = -0.22
         # ----------------------------------------
 
         x = y = 0
@@ -94,11 +90,12 @@ class WalkingController:
             leg.z = 0
             # Todo: change z
 
-            (leg.motor_hip,
-             leg.motor_knee,
+            (leg.motor_knee,
+             leg.motor_hip,
              leg.motor_abduction) = self.Solo12_Kin.inverse_kinematics(leg.x,
                                                                        leg.y,
-                                                                       leg.z,)
+                                                                       leg.z,
+                                                                       self.leg_name_to_sol_branch_Solo12[leg.name])
             # print(np.degrees(leg.motor_hip), np.degrees(leg.motor_knee))
 
             leg.motor_hip = leg.motor_hip + self.motor_offsets[0]

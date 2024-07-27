@@ -9,5 +9,5 @@ x = 0.05
 y = -0.25
 z = 0
 
-print(np.degrees(kine1.inverse_kinematics(x, y, z, 1)))
+print(np.degrees(kine1.inverse_kinematics(x, y, z, 0)))
 print(np.degrees(kine2.inverse_kinematics(x, y, z)))

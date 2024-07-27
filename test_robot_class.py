@@ -1,9 +1,7 @@
 from Robot import solo12_pybullet
 
 robot = solo12_pybullet.Solo12PybulletEnv(on_rack=False)
-a, b = robot.build_motor_id_list()
-print(a)
-print(b)
 while True:
-    robot.p.stepSimulation()
+    robot.p.resetDebugVisualizerCamera(0.95, 50, -20, robot.get_base_pos_and_orientation()[0])
+    robot.step()
 

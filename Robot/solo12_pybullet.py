@@ -24,11 +24,11 @@ class Solo12PybulletEnv(gym.Env):
         self.init_position = defalut_pos
         self.init_orientation = defalut_ori
         self.no_of_points = 100
-        self.frequency = 2.5
+        self.frequency = 7
         self.theta = 0
-        self.kp = 80
-        self.kd = 10
-        self.clips = 3
+        self.kp = 160
+        self.kd = 9
+        self.clips = 5
         self.on_rack = on_rack
         self.friction = 0.6
         self.gait = gait
