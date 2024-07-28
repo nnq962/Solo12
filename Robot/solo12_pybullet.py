@@ -24,7 +24,7 @@ class Solo12PybulletEnv(gym.Env):
         self.init_position = defalut_pos
         self.init_orientation = defalut_ori
         self.no_of_points = 100
-        self.frequency = 7
+        self.frequency = 2.5
         self.theta = 0
         self.kp = 160
         self.kd = 9
@@ -153,7 +153,7 @@ class Solo12PybulletEnv(gym.Env):
                 jointIndex=motor_id,
                 controlMode=self.p.POSITION_CONTROL,
                 targetPosition=angle,
-                force=10)
+                force=2)
 
     def reset_leg(self):
         self.p.resetJointState(
@@ -282,8 +282,8 @@ class Solo12PybulletEnv(gym.Env):
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
         for _ in range(n_frames):
-            # self.apply_position_control(leg_m_angle_cmd)
-            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
+            self.apply_position_control(leg_m_angle_cmd)
+            # self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
             self.p.stepSimulation()
 
     def step(self, a=None):

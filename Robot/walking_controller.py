@@ -68,9 +68,9 @@ class WalkingController:
 
         # Parameters for elip --------------------
         step_length = 0.1
-        step_height = 0.06
+        step_height = 0.07
         x_center = 0.
-        y_center = -0.22
+        y_center = -0.24
         # ----------------------------------------
 
         x = y = 0
@@ -96,7 +96,6 @@ class WalkingController:
                                                                        leg.y,
                                                                        leg.z,
                                                                        self.leg_name_to_sol_branch_Solo12[leg.name])
-            # print(np.degrees(leg.motor_hip), np.degrees(leg.motor_knee))
 
             leg.motor_hip = leg.motor_hip + self.motor_offsets[0]
             leg.motor_knee = leg.motor_knee + self.motor_offsets[1]
