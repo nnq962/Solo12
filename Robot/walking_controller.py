@@ -69,6 +69,7 @@ class WalkingController:
         # Parameters for elip --------------------
         step_length = 0.1
         step_height = 0.07
+        phi = np.degrees(30)
         x_center = 0.
         y_center = -0.24
         # ----------------------------------------
@@ -85,10 +86,12 @@ class WalkingController:
                     flag = 1
                 y = step_height * np.sin(leg_theta) * flag + y_center
 
-            leg.x, leg.y, leg.z = x, y, 0
+            leg.x, leg.y, leg.z = np.array(
+                [[np.cos(phi), 0, np.sin(phi)],
+                 [0, 1, 0],
+                 [-np.sin(phi), 0, np.cos(phi)]]) @ np.array([x, y, 0])
 
-            leg.z = 0
-            # Todo: change z
+            leg.z = -leg.z
 
             (leg.motor_knee,
              leg.motor_hip,
