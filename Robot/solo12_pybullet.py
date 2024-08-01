@@ -13,22 +13,22 @@ class Solo12PybulletEnv(gym.Env):
 
     def __init__(self,
                  render=True,
-                 defalut_pos=(0, 0, 0.34),
-                 defalut_ori=(0, 0, 0, 1),
+                 default_pos=(0, 0, 0.34),
+                 default_ori=(0, 0, 0, 1),
                  on_rack=False,
                  gait="trot"):
 
         self.render = render
         self.dt = 0.005
         self._frame_skip = 25
-        self.init_position = defalut_pos
-        self.init_orientation = defalut_ori
+        self.init_position = default_pos
+        self.init_orientation = default_ori
         self.no_of_points = 100
         self.frequency = 2.5
         self.theta = 0
-        self.kp = 160
-        self.kd = 9
-        self.clips = 5
+        self.kp = 35
+        self.kd = 3.5
+        self.clips = 3
         self.on_rack = on_rack
         self.friction = 0.6
         self.gait = gait
@@ -38,9 +38,9 @@ class Solo12PybulletEnv(gym.Env):
         self._joint_name_to_id = None
         self.plane = None
 
-        if self.gait is 'trot':
+        if self.gait == 'trot':
             self.phase = [0, self.no_of_points, self.no_of_points, 0]
-        elif gait is 'walk':
+        elif gait == 'walk':
             self.phase = [0, self.no_of_points, 3 * self.no_of_points / 2, self.no_of_points / 2]
 
         if self.render:
@@ -153,7 +153,7 @@ class Solo12PybulletEnv(gym.Env):
                 jointIndex=motor_id,
                 controlMode=self.p.POSITION_CONTROL,
                 targetPosition=angle,
-                force=2)
+                force=3)
 
     def reset_leg(self):
         self.p.resetJointState(
@@ -282,8 +282,8 @@ class Solo12PybulletEnv(gym.Env):
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
         for _ in range(n_frames):
-            self.apply_position_control(leg_m_angle_cmd)
-            # self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
+            # self.apply_position_control(leg_m_angle_cmd)
+            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
             self.p.stepSimulation()
 
     def step(self, a=None):

@@ -67,11 +67,11 @@ class WalkingController:
         legs = self.initialize_leg_state(theta)
 
         # Parameters for elip --------------------
-        step_length = 0.1
+        step_length = 0.12
         step_height = 0.07
-        phi = np.degrees(30)
+        phi = 0
         x_center = 0.
-        y_center = -0.24
+        y_center = -0.20
         # ----------------------------------------
 
         x = y = 0
