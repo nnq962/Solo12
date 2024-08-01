@@ -109,12 +109,12 @@ class Solo12PybulletEnv(gym.Env):
         return position, orientation
 
     def get_base_angular_velocity(self):
-        basevelocity = self.p.getBaseVelocity(self.solo12)
-        return basevelocity[1]
+        base_velocity = self.p.getBaseVelocity(self.solo12)
+        return base_velocity[1]
 
     def get_base_linear_velocity(self):
-        basevelocity = self.p.getBaseVelocity(self.solo12)
-        return basevelocity[0]
+        base_velocity = self.p.getBaseVelocity(self.solo12)
+        return base_velocity[0]
 
     def set_foot_friction(self, foot_friction):
         foot_link_id = [2, 3, 8, 11]
