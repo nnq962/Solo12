@@ -60,12 +60,12 @@ class WalkingController:
         self.update_leg_theta(theta)
         return legs
 
-    def forward(self, step_length, theta):
+    def run_elip(self, theta):
         legs = self.initialize_leg_state(theta)
 
         # Parameters for elip --------------------
-        step_length = 0.0
-        step_height = 0.0
+        step_length = 0.08
+        step_height = 0.06
         x_center = 0.
         y_center = -0.25
         z_center = 0.
@@ -143,4 +143,29 @@ class WalkingController:
                             legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_right.motor_abduction,
                             legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_left.motor_abduction]
 
+        return leg_motor_angles
+
+    def control_point(self, theta):
+        legs = self.initialize_leg_state(theta)
+
+        # ----------------------------------------
+        x = 0.
+        y = -0.25
+        z = 0.05
+        # ----------------------------------------
+
+        for leg in legs:
+            leg.x, leg.y, leg.z = x, y, z
+            (leg.motor_knee,
+             leg.motor_hip,
+             leg.motor_abduction) = self.Solo12_Kin.inverse_kinematics(leg.x,
+                                                                       leg.y,
+                                                                       leg.z,
+                                                                       self.leg_name_to_sol_branch_Solo12[leg.name])
+            leg.motor_hip = leg.motor_hip + self.motor_offsets[0]
+            leg.motor_knee = leg.motor_knee + self.motor_offsets[1]
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_left.motor_abduction,
+                            legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_right.motor_abduction,
+                            legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_right.motor_abduction,
+                            legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_left.motor_abduction]
         return leg_motor_angles

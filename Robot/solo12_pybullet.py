@@ -21,7 +21,7 @@ class Solo12PybulletEnv(gym.Env):
 
         self.render = render
         self.dt = 0.005
-        self._frame_skip = 50
+        self._frame_skip = 35
         self.init_position = default_pos
         self.init_orientation = default_ori
         self.no_of_points = 100
@@ -274,7 +274,7 @@ class Solo12PybulletEnv(gym.Env):
 
     def do_simulation(self, n_frames):
         omega = 2 * self.no_of_points * self.frequency
-        leg_m_angle_cmd = self.walking_controller.sidesteps(theta=self.theta)
+        leg_m_angle_cmd = self.walking_controller.run_elip(theta=self.theta)
         self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
