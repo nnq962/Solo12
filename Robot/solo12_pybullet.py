@@ -13,25 +13,27 @@ class Solo12PybulletEnv(gym.Env):
 
     def __init__(self,
                  render=True,
-                 default_pos=(0, 0, 0.34),
+                 default_pos=(0, 0, 0.33),
                  default_ori=(0, 0, 0, 1),
                  on_rack=False,
-                 gait="trot"):
+                 gait="trot",
+                 step_length=0.09):
 
         self.render = render
         self.dt = 0.005
-        self._frame_skip = 25
+        self._frame_skip = 50
         self.init_position = default_pos
         self.init_orientation = default_ori
         self.no_of_points = 100
         self.frequency = 2.5
         self.theta = 0
-        self.kp = 35
-        self.kd = 3.5
+        self.kp = 30.5
+        self.kd = 0.68
         self.clips = 3
         self.on_rack = on_rack
         self.friction = 0.6
         self.gait = gait
+        self.step_length = step_length
 
         self.solo12 = None
         self._motor_id_list = None
@@ -116,6 +118,10 @@ class Solo12PybulletEnv(gym.Env):
         base_velocity = self.p.getBaseVelocity(self.solo12)
         return base_velocity[0]
 
+    def get_motor_torques(self):
+        motor_ang = [self.p.getJointState(self.solo12, motor_id)[3] for motor_id in self._motor_id_list]
+        return motor_ang
+
     def set_foot_friction(self, foot_friction):
         foot_link_id = [2, 3, 8, 11]
         for link_id in foot_link_id:
@@ -145,15 +151,6 @@ class Solo12PybulletEnv(gym.Env):
             jointIndex=motor_id,
             controlMode=self.p.TORQUE_CONTROL,
             force=torque)
-
-    def apply_position_control(self, target_angles):
-        for motor_id, angle in zip(self._motor_id_list, target_angles):
-            self.p.setJointMotorControl2(
-                bodyIndex=self.solo12,
-                jointIndex=motor_id,
-                controlMode=self.p.POSITION_CONTROL,
-                targetPosition=angle,
-                force=3)
 
     def reset_leg(self):
         self.p.resetJointState(
@@ -277,12 +274,11 @@ class Solo12PybulletEnv(gym.Env):
 
     def do_simulation(self, n_frames):
         omega = 2 * self.no_of_points * self.frequency
-        leg_m_angle_cmd = self.walking_controller.run_elliptical(self.theta)
+        leg_m_angle_cmd = self.walking_controller.sidesteps(theta=self.theta)
         self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
         for _ in range(n_frames):
-            # self.apply_position_control(leg_m_angle_cmd)
             self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
             self.p.stepSimulation()
 

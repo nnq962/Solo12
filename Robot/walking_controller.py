@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from collections import namedtuple
 from Robot import solo12_kinematic
-from Robot import solo12_kinematic_2
 import numpy as np
 
 
@@ -13,6 +12,7 @@ class LegData:
     motor_abduction: float = 0.0
     x: float = 0.0
     y: float = 0.0
+    z: float = 0.0
     theta: float = 0.0
     phi: float = 0.0
     b: float = 1.0
@@ -43,7 +43,7 @@ class WalkingController:
         self.gait_type = gait_type
         self.no_of_points = no_of_points
 
-        self.motor_offsets = [np.radians(90), np.radians(0)]
+        self.motor_offsets = [np.pi / 2, np.radians(0)]
         self.leg_name_to_sol_branch_Solo12 = {'fl': 1, 'fr': 1, 'bl': 0, 'br': 0}
         self.Solo12_Kin = solo12_kinematic.Solo12Kinematic()
 
@@ -60,18 +60,15 @@ class WalkingController:
         self.update_leg_theta(theta)
         return legs
 
-    def run_elliptical(self, theta):
-        """
-        Run elipse trajectory with IK
-        """
+    def forward(self, step_length, theta):
         legs = self.initialize_leg_state(theta)
 
         # Parameters for elip --------------------
-        step_length = 0.12
-        step_height = 0.07
-        phi = 0
+        step_length = 0.0
+        step_height = 0.0
         x_center = 0.
-        y_center = -0.20
+        y_center = -0.25
+        z_center = 0.
         # ----------------------------------------
 
         x = y = 0
@@ -79,19 +76,57 @@ class WalkingController:
             leg_theta = (leg.theta / (2 * self.no_of_points)) * 2 * np.pi
             leg.r = step_length / 2
             if self.gait_type == "trot":
-                x = -leg.r * np.cos(leg_theta) + x_center
+                if leg.name == "fl" or leg.name == "fr":
+                    x = -leg.r * np.cos(leg_theta) + x_center
+                else:
+                    x = -leg.r * np.cos(leg_theta) - x_center
                 if leg_theta > np.pi:
                     flag = 0
                 else:
                     flag = 1
                 y = step_height * np.sin(leg_theta) * flag + y_center
 
-            leg.x, leg.y, leg.z = np.array(
-                [[np.cos(phi), 0, np.sin(phi)],
-                 [0, 1, 0],
-                 [-np.sin(phi), 0, np.cos(phi)]]) @ np.array([x, y, 0])
+            leg.x, leg.y, leg.z = x, y, 0
 
-            leg.z = -leg.z
+            (leg.motor_knee,
+             leg.motor_hip,
+             leg.motor_abduction) = self.Solo12_Kin.inverse_kinematics(leg.x,
+                                                                       leg.y,
+                                                                       leg.z,
+                                                                       self.leg_name_to_sol_branch_Solo12[leg.name])
+
+            leg.motor_hip = leg.motor_hip + self.motor_offsets[0]
+            leg.motor_knee = leg.motor_knee + self.motor_offsets[1]
+
+        leg_motor_angles = [legs.front_left.motor_hip, legs.front_left.motor_knee, legs.front_left.motor_abduction,
+                            legs.back_right.motor_hip, legs.back_right.motor_knee, legs.back_right.motor_abduction,
+                            legs.front_right.motor_hip, legs.front_right.motor_knee, legs.front_right.motor_abduction,
+                            legs.back_left.motor_hip, legs.back_left.motor_knee, legs.back_left.motor_abduction]
+
+        return leg_motor_angles
+
+    def sidesteps(self, theta):
+        legs = self.initialize_leg_state(theta)
+
+        # Parameters for elip --------------------
+        step_length = 0.02
+        step_height = 0.04
+        x_center = 0.
+        y_center = -0.25
+        # ----------------------------------------
+
+        x = y = 0
+        for leg in legs:
+            leg_theta = (leg.theta / (2 * self.no_of_points)) * 2 * np.pi
+            leg.r = step_length / 2
+            if self.gait_type == "trot":
+                x = -leg.r * np.cos(leg_theta) - x_center
+                if leg_theta > np.pi:
+                    flag = 0
+                else:
+                    flag = 1
+                y = step_height * np.sin(leg_theta) * flag + y_center
+            leg.x, leg.y, leg.z = 0, y, x
 
             (leg.motor_knee,
              leg.motor_hip,
