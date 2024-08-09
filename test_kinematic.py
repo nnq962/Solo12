@@ -41,6 +41,11 @@ ax = fig.add_subplot(111, projection='3d')
 # Vẽ các điểm trên không gian 3D
 ax.scatter(x_l, z_l, y_l)
 
+# Giới hạn giá trị các trục x, y, z
+ax.set_xlim(-0.08, 0.08)  # Giới hạn trục x từ 0 đến 10
+ax.set_ylim(-0.1, 0.1)  # Giới hạn trục y từ 0 đến 10
+ax.set_zlim(-0.3, -0.03)  # Giới hạn trục z từ 0 đến 10
+
 # Gán nhãn cho các trục
 ax.set_xlabel('X Label')
 ax.set_ylabel('Y Label')
