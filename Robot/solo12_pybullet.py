@@ -5,6 +5,7 @@ import pybullet_data
 from Robot import pybullet_client
 from Robot import walking_controller
 from Robot import get_terrain_normal as normal_estimator
+from collections import deque
 
 
 def transform_action(action):
@@ -25,6 +26,15 @@ def transform_action(action):
     return action
 
 
+def add_noise(sensor_value, sd=0.04):
+    """
+    Adds sensor noise of user defined standard deviation in current sensor_value
+    """
+    noise = np.random.normal(0, sd, 1)
+    sensor_value = sensor_value + noise[0]
+    return sensor_value
+
+
 class Solo12PybulletEnv(gym.Env):
     """
     Solo12 Pybullet environment
@@ -39,7 +49,8 @@ class Solo12PybulletEnv(gym.Env):
                  stairs=False,
                  wedge=True,
                  downhill=False,
-                 deg=11):
+                 deg=11,
+                 imu_noise=False):
 
         self.incline_deg = deg
         self.render = render
@@ -59,6 +70,7 @@ class Solo12PybulletEnv(gym.Env):
         self.is_stairs = stairs
         self.is_wedge = wedge
         self.downhill = downhill
+        self.add_imu_noise = imu_noise
 
         self.solo12 = None
         self._motor_id_list = None
@@ -74,6 +86,10 @@ class Solo12PybulletEnv(gym.Env):
         self.incline_ori = 0
         self.wedge_start = 0.5
         self.prev_incline_vec = (0, 0, 1)
+
+        self.ori_history_length = 3
+        self.ori_history_queue = deque([0] * 3 * self.ori_history_length,
+                                       maxlen=3 * self.ori_history_length)  # observation queue
 
         if self.gait == 'trot':
             self.phase = [0, self.no_of_points, self.no_of_points, 0]
@@ -391,6 +407,26 @@ class Solo12PybulletEnv(gym.Env):
 
         return foot_contact_info
 
+    def get_observation(self):
+        """
+        This function returns the current observation of the environment for the interested task
+        Ret:
+            obs: [R(t-2), P(t-2), Y(t-2), R(t-1), P(t-1), Y(t-1), R(t), P(t), Y(t), estimated support plane (roll, pitch) ]
+        """
+        pos, ori = self.get_base_pos_and_orientation()
+        rpy = self.p.getEulerFromQuaternion(ori)
+        rpy = np.round(rpy, 5)
+
+        for val in rpy:
+            if self.add_imu_noise:
+                val = add_noise(val)
+            self.ori_history_queue.append(val)
+
+        obs = np.concatenate(
+            (self.ori_history_queue, [self.support_plane_estimated_roll, self.support_plane_estimated_pitch])).ravel()
+
+        return obs
+
     def do_simulation(self, action, n_frames):
         omega = 2 * self.no_of_points * self.frequency
         leg_m_angle_cmd = self.walking_controller.test_elip(theta=self.theta)
@@ -415,12 +451,70 @@ class Solo12PybulletEnv(gym.Env):
                                                                                      self.get_motor_angles(),
                                                                                      rot_mat)
         rpy_original = self.p.getEulerFromQuaternion(ori)
-        print(np.degrees(rpy_original[1]))
-        print(np.degrees(self.support_plane_estimated_pitch))
-        print("-------------------------------")
+        # print(np.degrees(rpy_original[1]))
+        # print(np.degrees(self.support_plane_estimated_pitch))
+        # print("-------------------------------")
 
         self.prev_incline_vec = plane_normal
 
     def step(self, action):
         action = transform_action(action)
         self.do_simulation(action, n_frames=self._frame_skip)
+        o = self.get_observation()
+        reward, done = self.get_reward()
+        info = {}
+        return o, reward, done, info
+
+    def get_reward(self):
+        """
+        Calculates reward achieved by the robot for RPY stability, torso height criterion and forward distance moved on the slope:
+        Ret:
+            reward : reward achieved
+            done   : return True if environment terminates
+
+        """
+        wedge_angle = self.incline_deg * np.pi / 180
+        robot_height_from_support_plane = 0.65
+        pos, ori = self.get_base_pos_and_orientation()
+
+        rpy_orig = self.p.getEulerFromQuaternion(ori)
+        rpy = np.round(rpy_orig, 4)
+
+        current_height = round(pos[2], 5)
+        self.current_com_height = current_height
+        standing_penalty = 3
+
+        desired_height = robot_height_from_support_plane / np.cos(wedge_angle) + np.tan(wedge_angle) * (
+                    (pos[0]) * np.cos(self.incline_ori) + 0.5)
+
+        roll_reward = np.exp(-45 * ((rpy[0] - self.support_plane_estimated_roll) ** 2))
+        pitch_reward = np.exp(-45 * ((rpy[1] - self.support_plane_estimated_pitch) ** 2))
+        yaw_reward = np.exp(-40 * (rpy[2] ** 2))
+        height_reward = np.exp(-800 * (desired_height - current_height) ** 2)
+
+        x = pos[0]
+        y = pos[1]
+        x_l = self._last_base_position[0]
+        y_l = self._last_base_position[1]
+        self._last_base_position = pos
+
+        step_distance_x = (x - x_l)
+        step_distance_y = abs(y - y_l)
+
+        done = self._termination(pos, ori)
+        if done:
+            reward = 0
+        else:
+            reward = round(yaw_reward, 4) + round(pitch_reward, 4) + round(roll_reward, 4) \
+                     + round(height_reward, 4) + 100 * round(step_distance_x, 4) - 20 * round(step_distance_y, 4)
+
+            '''
+            #Penalize for standing at same position for continuous 150 steps
+            self.step_disp.append(step_distance_x)
+
+            if(self._n_steps>150):
+                if(sum(self.step_disp)<0.035):
+                    reward = reward-standing_penalty
+            '''
+
+        return reward, done
