@@ -1,5 +1,5 @@
 from Robot import solo12_pybullet
-
+action_temp = [0] * 20
 robot = solo12_pybullet.Solo12PybulletEnv(on_rack=False)
 while True:
 
@@ -26,5 +26,5 @@ while True:
         print("Q pressed")
         print("------------------")
         break
-    robot.step()
+    robot.step(action=action_temp)
 

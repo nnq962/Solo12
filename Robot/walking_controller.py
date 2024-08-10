@@ -3,6 +3,8 @@ from collections import namedtuple
 from Robot import solo12_kinematic
 import numpy as np
 
+action_temp = [0] * 20
+
 
 @dataclass
 class LegData:
@@ -14,7 +16,7 @@ class LegData:
     y: float = 0.0
     z: float = 0.0
     theta: float = 0.0
-    phi: float = 0.0
+    phi: float = 0
     b: float = 1.0
     step_length: float = 0.0
     x_shift = 0.0
@@ -53,40 +55,78 @@ class WalkingController:
         self.back_right.theta = np.fmod(theta + self._phase.back_right, 2 * self.no_of_points)
         self.back_left.theta = np.fmod(theta + self._phase.back_left, 2 * self.no_of_points)
 
-    def initialize_leg_state(self, theta):
+    def _update_leg_phi_val(self, leg_phi):
+        self.front_right.phi = leg_phi[0]
+        self.front_left.phi = leg_phi[1]
+        self.back_right.phi = leg_phi[2]
+        self.back_left.phi = leg_phi[3]
+
+    def _update_leg_step_length_val(self, step_length):
+        self.front_right.step_length = step_length[0]
+        self.front_left.step_length = step_length[1]
+        self.back_right.step_length = step_length[2]
+        self.back_left.step_length = step_length[3]
+
+    def initialize_elipse_shift(self, yshift, xshift, zshift):
+        """
+        Khởi tạo các độ lệch Y, X, Z mong muốn của quỹ đạo hình elip cho mỗi chân
+        :param yshift:
+        :param xshift:
+        :param zshift:
+        :return:
+        """
+        self.front_right.y_shift = yshift[0]
+        self.front_left.y_shift = yshift[1]
+        self.back_right.y_shift = yshift[2]
+        self.back_left.y_shift = yshift[3]
+
+        self.front_right.x_shift = xshift[0]
+        self.front_left.x_shift = xshift[1]
+        self.back_right.x_shift = xshift[2]
+        self.back_left.x_shift = xshift[3]
+
+        self.front_right.z_shift = zshift[0]
+        self.front_left.z_shift = zshift[1]
+        self.back_right.z_shift = zshift[2]
+        self.back_left.z_shift = zshift[3]
+
+    def initialize_leg_state(self, theta, action, test=False):
         Legs = namedtuple('legs', 'front_right front_left back_right back_left')
         legs = Legs(front_right=self.front_right, front_left=self.front_left, back_right=self.back_right,
                     back_left=self.back_left)
         self.update_leg_theta(theta)
+        if test:
+            leg_sl = action[0:4]
+            leg_phi = action[4:8]
+            self._update_leg_step_length_val(leg_sl)
+            self._update_leg_phi_val(leg_phi)
+            self.initialize_elipse_shift(action[8:12], action[12:16], action[16:20])
         return legs
 
-    def run_elip(self, theta):
-        legs = self.initialize_leg_state(theta)
+    def run_elliptical_solo12(self, theta, action):
+        legs = self.initialize_leg_state(theta, action)
 
         # Parameters for elip --------------------
-        step_length = 0.08
-        step_height = 0.06
-        x_center = 0.
-        y_center = -0.25
-        z_center = 0.
+        step_height = 0.04
+        y_center = -0.23
         # ----------------------------------------
 
         x = y = 0
         for leg in legs:
             leg_theta = (leg.theta / (2 * self.no_of_points)) * 2 * np.pi
-            leg.r = step_length / 2
+            leg.r = leg.step_length / 2
             if self.gait_type == "trot":
-                if leg.name == "fl" or leg.name == "fr":
-                    x = -leg.r * np.cos(leg_theta) + x_center
-                else:
-                    x = -leg.r * np.cos(leg_theta) - x_center
+                x = -leg.r * np.cos(leg_theta) + leg.x_shift
                 if leg_theta > np.pi:
                     flag = 0
                 else:
                     flag = 1
-                y = step_height * np.sin(leg_theta) * flag + y_center
+                y = step_height * np.sin(leg_theta) * flag + y_center + leg.y_shift
 
-            leg.x, leg.y, leg.z = x, y, 0
+            leg.x, leg.y, leg.z = np.array(
+                [[np.cos(leg.phi), 0, np.sin(leg.phi)], [0, 1, 0], [-np.sin(leg.phi), 0, np.cos(leg.phi)]]) @ np.array(
+                [x, y, 0])
+            leg.z = leg.z + leg.z_shift
 
             (leg.motor_knee,
              leg.motor_hip,
@@ -105,14 +145,14 @@ class WalkingController:
 
         return leg_motor_angles
 
-    def sidesteps(self, theta):
-        legs = self.initialize_leg_state(theta)
+    def test_elip(self, theta):
+        legs = self.initialize_leg_state(theta, action=action_temp, test=True)
 
         # Parameters for elip --------------------
-        step_length = 0.02
-        step_height = 0.04
+        step_length = 0.08
+        step_height = 0.06
         x_center = 0.
-        y_center = -0.25
+        y_center = -0.23
         # ----------------------------------------
 
         x = y = 0
@@ -120,13 +160,19 @@ class WalkingController:
             leg_theta = (leg.theta / (2 * self.no_of_points)) * 2 * np.pi
             leg.r = step_length / 2
             if self.gait_type == "trot":
-                x = -leg.r * np.cos(leg_theta) - x_center
+                if leg.name == "fl" or leg.name == "fr":
+                    x = -leg.r * np.cos(leg_theta) + x_center
+                else:
+                    x = -leg.r * np.cos(leg_theta) - x_center
                 if leg_theta > np.pi:
                     flag = 0
                 else:
                     flag = 1
                 y = step_height * np.sin(leg_theta) * flag + y_center
-            leg.x, leg.y, leg.z = 0, y, x
+
+            leg.x, leg.y, leg.z = np.array(
+                [[np.cos(leg.phi), 0, np.sin(leg.phi)], [0, 1, 0], [-np.sin(leg.phi), 0, np.cos(leg.phi)]]) @ np.array(
+                [x, y, 0])
 
             (leg.motor_knee,
              leg.motor_hip,
@@ -146,7 +192,7 @@ class WalkingController:
         return leg_motor_angles
 
     def control_point(self, theta):
-        legs = self.initialize_leg_state(theta)
+        legs = self.initialize_leg_state(theta, action=action_temp, test=True)
 
         # ----------------------------------------
         x = 0.

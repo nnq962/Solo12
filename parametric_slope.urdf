@@ -1,0 +1,18 @@
+<robot name="triangle_slope">
+  <link name="base">
+    <visual>
+      <geometry>
+        <mesh filename="triangle_slope.obj"/>
+      </geometry>
+      <material name="">
+        <color rgba="0 0 0 0.4"/>  <!-- Màu đỏ -->
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="slope11.obj"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
+
