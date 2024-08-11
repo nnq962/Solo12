@@ -11,14 +11,10 @@ from collections import deque
 def transform_action(action):
     action = np.clip(action, -1, 1)
     action[:4] = (action[:4] + 1) / 2  # Step lengths are positive always
-    action[:4] = action[:4] * 2 * 0.068  # Max steplength = 2x0.068
-
+    action[:4] = action[:4] * 0.136  # Max steplength = 0.136
     action[4:8] = action[4:8] * np.pi / 2  # PHI can be [-pi/2, pi/2]
-
     action[8:12] = 0.07 * (action[8:12] + 1) / 2  # elipse center y is positive always
-
     action[12:16] = action[12:16] * 0.04  # x
-
     action[16:20] = action[16:20] * 0.035  # Max allowed Z-shift due to abduction limits is 3.5cm
     action[17] = -action[17]
     action[19] = -action[19]
@@ -47,10 +43,11 @@ class Solo12PybulletEnv(gym.Env):
                  on_rack=False,
                  gait="trot",
                  stairs=False,
-                 wedge=True,
+                 wedge=False,
                  downhill=False,
                  deg=11,
-                 imu_noise=False):
+                 imu_noise=False,
+                 end_steps=1000):
 
         self.incline_deg = deg
         self.render = render
@@ -71,6 +68,7 @@ class Solo12PybulletEnv(gym.Env):
         self.is_wedge = wedge
         self.downhill = downhill
         self.add_imu_noise = imu_noise
+        self.termination_steps = end_steps
 
         self.solo12 = None
         self._motor_id_list = None
@@ -86,6 +84,8 @@ class Solo12PybulletEnv(gym.Env):
         self.incline_ori = 0
         self.wedge_start = 0.5
         self.prev_incline_vec = (0, 0, 1)
+        self.last_base_position = [0, 0, 0]
+        self.n_steps = 0
 
         self.ori_history_length = 3
         self.ori_history_queue = deque([0] * 3 * self.ori_history_length,
@@ -183,6 +183,17 @@ class Solo12PybulletEnv(gym.Env):
         self.reset_abd()
         self.set_foot_friction(self.friction)
 
+    def reset(self, **kwargs):
+        self.theta = 0
+        self.last_base_position = [0, 0, 0]
+
+        self.p.resetBasePositionAndOrientation(self.solo12, self.init_position, self.init_orientation)
+        self.p.resetBaseVelocity(self.solo12, [0, 0, 0], [0, 0, 0])
+        self.reset_leg()
+
+        self.n_steps = 0
+        return self.get_observation()
+
     def set_wedge_friction(self, friction):
         self.p.changeDynamics(self.wedge, -1, lateralFriction=friction)
 
@@ -251,18 +262,25 @@ class Solo12PybulletEnv(gym.Env):
             self.set_motor_torque_by_id(motor_id, motor_torque)
         return applied_motor_torque
 
+    def apply_postion_control(self, desired_angles):
+        for motor_id, angle in zip(self._motor_id_list, desired_angles):
+            self.set_desired_motor_angle_by_id(motor_id, angle)
+
     def set_motor_torque_by_id(self, motor_id, torque):
-        """
-        Điều khiển theo momen, yêu cầu tắt điều khiển vị trí và vận tốc trước
-        :param motor_id: id của động cơ
-        :param torque: lực điều khiển
-        :return:
-        """
         self.p.setJointMotorControl2(
             bodyIndex=self.solo12,
             jointIndex=motor_id,
             controlMode=self.p.TORQUE_CONTROL,
             force=torque)
+
+    def set_desired_motor_angle_by_id(self, motor_id, desired_angle):
+        self.p.setJointMotorControl2(bodyIndex=self.solo12,
+                                     jointIndex=motor_id,
+                                     controlMode=self.p.POSITION_CONTROL,
+                                     targetPosition=desired_angle,
+                                     positionGain=8,
+                                     velocityGain=0.3,
+                                     force=3)
 
     def reset_leg(self):
         self.p.resetJointState(
@@ -411,7 +429,8 @@ class Solo12PybulletEnv(gym.Env):
         """
         This function returns the current observation of the environment for the interested task
         Ret:
-            obs: [R(t-2), P(t-2), Y(t-2), R(t-1), P(t-1), Y(t-1), R(t), P(t), Y(t), estimated support plane (roll, pitch) ]
+            obs: [R(t-2), P(t-2), Y(t-2), R(t-1), P(t-1), Y(t-1), R(t), P(t), Y(t),
+             estimated support plane (roll, pitch)]
         """
         pos, ori = self.get_base_pos_and_orientation()
         rpy = self.p.getEulerFromQuaternion(ori)
@@ -422,8 +441,8 @@ class Solo12PybulletEnv(gym.Env):
                 val = add_noise(val)
             self.ori_history_queue.append(val)
 
-        obs = np.concatenate(
-            (self.ori_history_queue, [self.support_plane_estimated_roll, self.support_plane_estimated_pitch])).ravel()
+        obs = np.concatenate((self.ori_history_queue,
+                              [self.support_plane_estimated_roll, self.support_plane_estimated_pitch])).ravel()
 
         return obs
 
@@ -434,8 +453,9 @@ class Solo12PybulletEnv(gym.Env):
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
 
-        for _ in range(n_frames):
-            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
+        for _ in range(1):
+            # self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
+            self.apply_postion_control(leg_m_angle_cmd)
             self.p.stepSimulation()
 
         contact_info = self.get_foot_contacts()
@@ -450,12 +470,13 @@ class Solo12PybulletEnv(gym.Env):
                                                                                      contact_info,
                                                                                      self.get_motor_angles(),
                                                                                      rot_mat)
-        rpy_original = self.p.getEulerFromQuaternion(ori)
+        # rpy_original = self.p.getEulerFromQuaternion(ori)
         # print(np.degrees(rpy_original[1]))
         # print(np.degrees(self.support_plane_estimated_pitch))
         # print("-------------------------------")
 
         self.prev_incline_vec = plane_normal
+        self.n_steps += 1
 
     def step(self, action):
         action = transform_action(action)
@@ -465,9 +486,39 @@ class Solo12PybulletEnv(gym.Env):
         info = {}
         return o, reward, done, info
 
+    def termination(self, pos, orientation):
+        """
+        Check termination conditions of the environment
+        Args:
+            pos 		: current position of the robot's base in world frame
+            orientation : current orientation of robot's base (Quaternions) in world frame
+        Ret:
+            done 		: return True if termination conditions satisfied
+        """
+        done = False
+        rpy = self.p.getEulerFromQuaternion(orientation)
+
+        if self.n_steps >= self.termination_steps:
+            done = True
+        else:
+            if abs(rpy[0]) > np.radians(30):
+                print('Oops, Robot about to fall sideways! Terminated')
+                done = True
+
+            if abs(rpy[1]) > np.radians(35):
+                print('Oops, Robot doing wheely! Terminated')
+                done = True
+
+            if pos[2] > 0.9:
+                print('Robot was too high! Terminated')
+                done = True
+
+        return done
+
     def get_reward(self):
         """
-        Calculates reward achieved by the robot for RPY stability, torso height criterion and forward distance moved on the slope:
+        Calculates reward achieved by the robot for RPY stability, torso height criterion
+         and forward distance moved on the slope:
         Ret:
             reward : reward achieved
             done   : return True if environment terminates
@@ -481,11 +532,10 @@ class Solo12PybulletEnv(gym.Env):
         rpy = np.round(rpy_orig, 4)
 
         current_height = round(pos[2], 5)
-        self.current_com_height = current_height
-        standing_penalty = 3
+        # standing_penalty = 3
 
         desired_height = robot_height_from_support_plane / np.cos(wedge_angle) + np.tan(wedge_angle) * (
-                    (pos[0]) * np.cos(self.incline_ori) + 0.5)
+                (pos[0]) * np.cos(self.incline_ori) + 0.5)
 
         roll_reward = np.exp(-45 * ((rpy[0] - self.support_plane_estimated_roll) ** 2))
         pitch_reward = np.exp(-45 * ((rpy[1] - self.support_plane_estimated_pitch) ** 2))
@@ -494,14 +544,15 @@ class Solo12PybulletEnv(gym.Env):
 
         x = pos[0]
         y = pos[1]
-        x_l = self._last_base_position[0]
-        y_l = self._last_base_position[1]
-        self._last_base_position = pos
+        x_l = self.last_base_position[0]
+        y_l = self.last_base_position[1]
+        self.last_base_position = pos
 
         step_distance_x = (x - x_l)
         step_distance_y = abs(y - y_l)
 
-        done = self._termination(pos, ori)
+        done = self.termination(pos, ori)
+
         if done:
             reward = 0
         else:
