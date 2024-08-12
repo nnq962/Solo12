@@ -453,9 +453,9 @@ class Solo12PybulletEnv(gym.Env):
         leg_m_angle_cmd = np.array(leg_m_angle_cmd)
         leg_m_angle_vel = np.zeros(12)
 
-        for _ in range(1):
-            # self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
-            self.apply_postion_control(leg_m_angle_cmd)
+        for _ in range(self._frame_skip):
+            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
+            # self.apply_postion_control(leg_m_angle_cmd)
             self.p.stepSimulation()
 
         contact_info = self.get_foot_contacts()

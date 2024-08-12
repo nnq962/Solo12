@@ -1,6 +1,6 @@
 from Robot import solo12_pybullet
 action_temp = [0] * 20
-robot = solo12_pybullet.Solo12PybulletEnv(on_rack=True)
+robot = solo12_pybullet.Solo12PybulletEnv(on_rack=False)
 while True:
 
     keys = robot.p.getKeyboardEvents()
