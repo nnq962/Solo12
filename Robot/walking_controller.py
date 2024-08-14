@@ -16,7 +16,7 @@ class LegData:
     y: float = 0.0
     z: float = 0.0
     theta: float = 0.0
-    phi: float = 0
+    phi: float = np.radians(90)
     b: float = 1.0
     step_length: float = 0.0
     x_shift = 0.0
@@ -109,6 +109,7 @@ class WalkingController:
         # Parameters for elip --------------------
         step_height = 0.04
         y_center = -0.23
+        phi = np.radians(90)
         # ----------------------------------------
 
         x = y = 0
@@ -124,7 +125,7 @@ class WalkingController:
                 y = step_height * np.sin(leg_theta) * flag + y_center + leg.y_shift
 
             leg.x, leg.y, leg.z = np.array(
-                [[np.cos(leg.phi), 0, np.sin(leg.phi)], [0, 1, 0], [-np.sin(leg.phi), 0, np.cos(leg.phi)]]) @ np.array(
+                [[np.cos(phi), 0, np.sin(phi)], [0, 1, 0], [-np.sin(phi), 0, np.cos(phi)]]) @ np.array(
                 [x, y, 0])
             leg.z = leg.z + leg.z_shift
 

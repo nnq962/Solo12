@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')  # Hoặc 'Qt5Agg', tùy thuộc vào hệ thống của bạn
 
-phi = np.radians(30)
+phi = np.radians(90)
 step_length = 0.08
 step_height = 0.06
 y_center = -0.25

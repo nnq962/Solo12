@@ -7,6 +7,13 @@ from Robot import walking_controller
 from Robot import get_terrain_normal as normal_estimator
 from collections import deque
 
+motor_names = [
+    "motor_hip_fl", "motor_knee_fl", "motor_abduction_fl",
+    "motor_hip_hr", "motor_knee_hr", "motor_abduction_hr",
+    "motor_hip_fr", "motor_knee_fr", "motor_abduction_fr",
+    "motor_hip_hl", "motor_knee_hl", "motor_abduction_hl"
+]
+
 
 def transform_action(action):
     action = np.clip(action, -1, 1)
@@ -47,19 +54,23 @@ class Solo12PybulletEnv(gym.Env):
                  downhill=False,
                  deg=11,
                  imu_noise=False,
-                 end_steps=1000):
+                 end_steps=1000,
+                 pd_control_enabled=True,
+                 motor_kp=30.5,
+                 motor_kd=0.68):
 
+        self.pd_control_enabled = pd_control_enabled
         self.incline_deg = deg
         self.render = render
         self.dt = 0.005
-        self._frame_skip = 35
+        self.frame_skip = 25
         self.init_position = default_pos
         self.init_orientation = default_ori
         self.no_of_points = 100
         self.frequency = 2.5
         self.theta = 0
-        self.kp = 30.5
-        self.kd = 0.68
+        self.kp = motor_kp  # 30.5
+        self.kd = motor_kd  # 0.68
         self.clips = 3
         self.on_rack = on_rack
         self.friction = 0.6
@@ -71,8 +82,8 @@ class Solo12PybulletEnv(gym.Env):
         self.termination_steps = end_steps
 
         self.solo12 = None
-        self._motor_id_list = None
-        self._joint_name_to_id = None
+        self.motor_id_list = None
+        self.joint_name_to_id = None
         self.plane = None
         self.wedge_halfheight = None
         self.wedgePos = None
@@ -97,9 +108,9 @@ class Solo12PybulletEnv(gym.Env):
             self.phase = [0, self.no_of_points, 3 * self.no_of_points / 2, self.no_of_points / 2]
 
         if self.render:
-            self.p = pybullet_client.BulletClient(connection_mode=pybullet.GUI)
+            self.pybullet_client = pybullet_client.BulletClient(connection_mode=pybullet.GUI)
         else:
-            self.p = pybullet_client.BulletClient()
+            self.pybullet_client = pybullet_client.BulletClient()
         self.walking_controller = walking_controller.WalkingController(gait_type=self.gait, phase=self.phase)
 
         self.hard_reset()
@@ -108,30 +119,30 @@ class Solo12PybulletEnv(gym.Env):
             boxhalflength = 0.1
             boxhalfwidth = 1
             boxhalfheight = 0.015
-            sh_colbox = self.p.createCollisionShape(self.p.GEOM_BOX,
-                                                    halfExtents=[boxhalflength,
-                                                                 boxhalfwidth,
-                                                                 boxhalfheight])
+            sh_colbox = self.pybullet_client.createCollisionShape(self.pybullet_client.GEOM_BOX,
+                                                                  halfExtents=[boxhalflength,
+                                                                               boxhalfwidth,
+                                                                               boxhalfheight])
             boxorigin = 0.3
             n_steps = 15
             self.stairs = []
             for i in range(n_steps):
-                step = self.p.createMultiBody(baseMass=0, baseCollisionShapeIndex=sh_colbox,
-                                              basePosition=[boxorigin + i * 2 * boxhalflength, 0,
-                                                            boxhalfheight + i * 2 * boxhalfheight],
-                                              baseOrientation=[0.0, 0.0, 0.0, 1])
+                step = self.pybullet_client.createMultiBody(baseMass=0, baseCollisionShapeIndex=sh_colbox,
+                                                            basePosition=[boxorigin + i * 2 * boxhalflength, 0,
+                                                                          boxhalfheight + i * 2 * boxhalfheight],
+                                                            baseOrientation=[0.0, 0.0, 0.0, 1])
                 self.stairs.append(step)
-                self.p.changeDynamics(step, -1, lateralFriction=0.8)
+                self.pybullet_client.changeDynamics(step, -1, lateralFriction=0.8)
 
     def hard_reset(self):
         """
         Đặt các thông số mô phỏng mà sẽ duy trì không thay đổi trong suốt quá trình thử nghiệm.
         """
-        self.p.resetSimulation()
-        self.p.setPhysicsEngineParameter(numSolverIterations=int(300))
-        self.p.setGravity(0, 0, -9.81)
-        self.plane = self.p.loadURDF("%s/plane.urdf" % pybullet_data.getDataPath())
-        self.p.setTimeStep(self.dt / self._frame_skip)
+        self.pybullet_client.resetSimulation()
+        self.pybullet_client.setPhysicsEngineParameter(numSolverIterations=int(300))
+        self.pybullet_client.setGravity(0, 0, -9.81)
+        self.plane = self.pybullet_client.loadURDF("%s/plane.urdf" % pybullet_data.getDataPath())
+        self.pybullet_client.setTimeStep(self.dt / self.frame_skip)
 
         if self.is_wedge:
 
@@ -139,12 +150,12 @@ class Solo12PybulletEnv(gym.Env):
 
             self.wedge_halfheight = wedge_halfheight_offset + 1.5 * np.tan(np.radians(self.incline_deg)) / 2.0
             self.wedgePos = [0, 0, self.wedge_halfheight]
-            self.wedgeOrientation = self.p.getQuaternionFromEuler([0, 0, self.incline_ori])
+            self.wedgeOrientation = self.pybullet_client.getQuaternionFromEuler([0, 0, self.incline_ori])
 
             if not self.downhill:
                 wedge_model_path = "Robot/Wedges/uphill/urdf/wedge_" + str(self.incline_deg) + ".urdf"
 
-                self.init_orientation = self.p.getQuaternionFromEuler(
+                self.init_orientation = self.pybullet_client.getQuaternionFromEuler(
                     [np.radians(self.incline_deg) * np.sin(self.incline_ori),
                      -np.radians(self.incline_deg) * np.cos(self.incline_ori), 0])
 
@@ -164,243 +175,223 @@ class Solo12PybulletEnv(gym.Env):
 
                 self.init_orientation = [0, 0, 0, 1]
 
-            self.wedge = self.p.loadURDF(wedge_model_path, self.wedgePos, self.wedgeOrientation)
+            self.wedge = self.pybullet_client.loadURDF(wedge_model_path, self.wedgePos, self.wedgeOrientation)
 
             self.set_wedge_friction(0.7)
 
         robot_path = "Robot/Simulation/solo12.urdf"
-        self.solo12 = self.p.loadURDF(robot_path, self.init_position, self.init_orientation)
-        self._joint_name_to_id, self._motor_id_list = self.build_motor_id_list()
+        self.solo12 = self.pybullet_client.loadURDF(robot_path, self.init_position, self.init_orientation)
+        self.joint_name_to_id, self.motor_id_list = self.build_motor_id_list()
 
         if self.on_rack:
-            self.p.createConstraint(self.solo12,
-                                    -1, -1, -1,
-                                    self.p.JOINT_FIXED,
-                                    [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
-        self.p.resetBasePositionAndOrientation(self.solo12, self.init_position, self.init_orientation)
-        self.p.resetBaseVelocity(self.solo12, [0, 0, 0], [0, 0, 0])
-        self.reset_leg()
-        self.reset_abd()
+            self.pybullet_client.createConstraint(self.solo12,
+                                                  -1, -1, -1,
+                                                  self.pybullet_client.JOINT_FIXED,
+                                                  [0, 0, 0], [0, 0, 0], [0, 0, 0.4])
+        self.pybullet_client.resetBasePositionAndOrientation(self.solo12, self.init_position, self.init_orientation)
+        self.pybullet_client.resetBaseVelocity(self.solo12, [0, 0, 0], [0, 0, 0])
+        self.reset_pose()
         self.set_foot_friction(self.friction)
 
     def reset(self, **kwargs):
         self.theta = 0
         self.last_base_position = [0, 0, 0]
 
-        self.p.resetBasePositionAndOrientation(self.solo12, self.init_position, self.init_orientation)
-        self.p.resetBaseVelocity(self.solo12, [0, 0, 0], [0, 0, 0])
-        self.reset_leg()
+        self.pybullet_client.resetBasePositionAndOrientation(self.solo12, self.init_position, self.init_orientation)
+        self.pybullet_client.resetBaseVelocity(self.solo12, [0, 0, 0], [0, 0, 0])
+        self.reset_pose()
 
         self.n_steps = 0
         return self.get_observation()
 
     def set_wedge_friction(self, friction):
-        self.p.changeDynamics(self.wedge, -1, lateralFriction=friction)
+        self.pybullet_client.changeDynamics(self.wedge, -1, lateralFriction=friction)
 
     def build_motor_id_list(self):
-        num_joints = self.p.getNumJoints(self.solo12)
+        num_joints = self.pybullet_client.getNumJoints(self.solo12)
         joint_name_to_id = {}
         for i in range(num_joints):
-            joint_info = self.p.getJointInfo(self.solo12, i)
+            joint_info = self.pybullet_client.getJointInfo(self.solo12, i)
             joint_name_to_id[joint_info[1].decode("UTF-8")] = joint_info[0]
-        motor_names = ["motor_hip_fl",
-                       "motor_knee_fl",
-                       "motor_abduction_fl",
-
-                       "motor_hip_hr",
-                       "motor_knee_hr",
-                       "motor_abduction_hr",
-
-                       "motor_hip_fr",
-                       "motor_knee_fr",
-                       "motor_abduction_fr",
-
-                       "motor_hip_hl",
-                       "motor_knee_hl",
-                       "motor_abduction_hl"]
         motor_id_list = [joint_name_to_id[motor_name] for motor_name in motor_names]
         return joint_name_to_id, motor_id_list
 
     def get_motor_angles(self):
-        motor_ang = [self.p.getJointState(self.solo12, motor_id)[0] for motor_id in self._motor_id_list]
+        motor_ang = [self.pybullet_client.getJointState(self.solo12, motor_id)[0] for motor_id in self.motor_id_list]
         return motor_ang
 
     def get_motor_velocities(self):
-        motor_vel = [self.p.getJointState(self.solo12, motor_id)[1] for motor_id in self._motor_id_list]
+        motor_vel = [self.pybullet_client.getJointState(self.solo12, motor_id)[1] for motor_id in self.motor_id_list]
         return motor_vel
 
     def get_base_pos_and_orientation(self):
-        position, orientation = self.p.getBasePositionAndOrientation(self.solo12)
+        position, orientation = self.pybullet_client.getBasePositionAndOrientation(self.solo12)
         return position, orientation
 
     def get_base_angular_velocity(self):
-        base_velocity = self.p.getBaseVelocity(self.solo12)
+        base_velocity = self.pybullet_client.getBaseVelocity(self.solo12)
         return base_velocity[1]
 
     def get_base_linear_velocity(self):
-        base_velocity = self.p.getBaseVelocity(self.solo12)
+        base_velocity = self.pybullet_client.getBaseVelocity(self.solo12)
         return base_velocity[0]
 
     def get_motor_torques(self):
-        motor_ang = [self.p.getJointState(self.solo12, motor_id)[3] for motor_id in self._motor_id_list]
+        motor_ang = [self.pybullet_client.getJointState(self.solo12, motor_id)[3] for motor_id in self.motor_id_list]
         return motor_ang
 
     def set_foot_friction(self, foot_friction):
         foot_link_id = [2, 5, 8, 11]
         for link_id in foot_link_id:
-            self.p.changeDynamics(self.solo12, link_id, lateralFriction=foot_friction)
+            self.pybullet_client.changeDynamics(self.solo12, link_id, lateralFriction=foot_friction)
         return foot_friction
 
-    def apply_pd_control(self, motor_commands, motor_vel_commands):
+    def apply_pd_control(self, motor_commands):
+        motor_vel_commands = np.zeros(12)
         qpos_act = self.get_motor_angles()
         qvel_act = self.get_motor_velocities()
         applied_motor_torque = self.kp * (motor_commands - qpos_act) + self.kd * (motor_vel_commands - qvel_act)
         applied_motor_torque = np.clip(np.array(applied_motor_torque), -self.clips, self.clips)
         applied_motor_torque = applied_motor_torque.tolist()
 
-        for motor_id, motor_torque in zip(self._motor_id_list, applied_motor_torque):
+        for motor_id, motor_torque in zip(self.motor_id_list, applied_motor_torque):
             self.set_motor_torque_by_id(motor_id, motor_torque)
         return applied_motor_torque
 
     def apply_postion_control(self, desired_angles):
-        for motor_id, angle in zip(self._motor_id_list, desired_angles):
+        for motor_id, angle in zip(self.motor_id_list, desired_angles):
             self.set_desired_motor_angle_by_id(motor_id, angle)
 
     def set_motor_torque_by_id(self, motor_id, torque):
-        self.p.setJointMotorControl2(
+        self.pybullet_client.setJointMotorControl2(
             bodyIndex=self.solo12,
             jointIndex=motor_id,
-            controlMode=self.p.TORQUE_CONTROL,
+            controlMode=self.pybullet_client.TORQUE_CONTROL,
             force=torque)
 
     def set_desired_motor_angle_by_id(self, motor_id, desired_angle):
-        self.p.setJointMotorControl2(bodyIndex=self.solo12,
-                                     jointIndex=motor_id,
-                                     controlMode=self.p.POSITION_CONTROL,
-                                     targetPosition=desired_angle,
-                                     positionGain=8,
-                                     velocityGain=0.3,
-                                     force=3)
+        self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                   jointIndex=motor_id,
+                                                   controlMode=self.pybullet_client.POSITION_CONTROL,
+                                                   targetPosition=desired_angle,
+                                                   positionGain=1,
+                                                   velocityGain=1,
+                                                   force=3)
+
+    def set_desired_motor_angle_by_name(self, motor_name, desired_angle):
+        self.set_desired_motor_angle_by_id(self.joint_name_to_id[motor_name], desired_angle)
 
     def reset_leg(self):
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_hip_fl"],
-            targetValue=-0.7, targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_knee_fl"],
-            targetValue=1.4, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_hip_fl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_knee_fl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_hip_fl"],
+                                             targetValue=-0.7, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_knee_fl"],
+                                             targetValue=1.4, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_hip_fr"],
+                                             targetValue=-0.7, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_knee_fr"],
+                                             targetValue=1.4, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_hip_hl"],
+                                             targetValue=0.7, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_knee_hl"],
+                                             targetValue=-1.4, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_hip_hr"],
+                                             targetValue=0.7, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_knee_hr"],
+                                             targetValue=-1.4, targetVelocity=0)
 
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_hip_fr"],
-            targetValue=-0.7, targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_knee_fr"],
-            targetValue=1.4, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_hip_fr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_knee_fr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
+        if self.pd_control_enabled:
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_hip_fl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_knee_fl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_hip_fr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_knee_fr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_hip_hl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_knee_hl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_hip_hr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_knee_hr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+        else:
+            self.set_desired_motor_angle_by_name("motor_hip_fl", desired_angle=-0.7)
+            self.set_desired_motor_angle_by_name("motor_knee_fl", desired_angle=1.4)
 
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_hip_hl"],
-            targetValue=0.7, targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_knee_hl"],
-            targetValue=-1.4, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_hip_hl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_knee_hl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
+            self.set_desired_motor_angle_by_name("motor_hip_fr", desired_angle=-0.7)
+            self.set_desired_motor_angle_by_name("motor_knee_fr", desired_angle=1.4)
 
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_hip_hr"],
-            targetValue=0.7, targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_knee_hr"],
-            targetValue=-1.4, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_hip_hr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_knee_hr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
+            self.set_desired_motor_angle_by_name("motor_hip_hl", desired_angle=0.7)
+            self.set_desired_motor_angle_by_name("motor_knee_hl", desired_angle=-1.4)
+
+            self.set_desired_motor_angle_by_name("motor_hip_hr", desired_angle=0.7)
+            self.set_desired_motor_angle_by_name("motor_knee_hr", desired_angle=-1.4)
 
     def reset_abd(self):
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_abduction_fl"],
-            targetValue=0,
-            targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_abduction_fr"],
-            targetValue=0,
-            targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_abduction_hl"],
-            targetValue=0,
-            targetVelocity=0)
-        self.p.resetJointState(
-            self.solo12,
-            self._joint_name_to_id["motor_abduction_hr"],
-            targetValue=0,
-            targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_abduction_fl"],
+                                             targetValue=0, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_abduction_fr"],
+                                             targetValue=0, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_abduction_hl"],
+                                             targetValue=0, targetVelocity=0)
+        self.pybullet_client.resetJointState(self.solo12,
+                                             self.joint_name_to_id["motor_abduction_hr"],
+                                             targetValue=0, targetVelocity=0)
+        if self.pd_control_enabled:
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_abduction_fl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_abduction_fr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_abduction_hl"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+            self.pybullet_client.setJointMotorControl2(bodyIndex=self.solo12,
+                                                       jointIndex=self.joint_name_to_id["motor_abduction_hr"],
+                                                       controlMode=self.pybullet_client.VELOCITY_CONTROL,
+                                                       force=0, targetVelocity=0)
+        else:
+            self.set_desired_motor_angle_by_name("motor_abduction_fl", desired_angle=0)
+            self.set_desired_motor_angle_by_name("motor_abduction_fr", desired_angle=0)
+            self.set_desired_motor_angle_by_name("motor_abduction_hl", desired_angle=0)
+            self.set_desired_motor_angle_by_name("motor_abduction_hr", desired_angle=0)
 
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_abduction_fl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_abduction_fr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_abduction_hl"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
-        self.p.setJointMotorControl2(
-            bodyIndex=self.solo12,
-            jointIndex=self._joint_name_to_id["motor_abduction_hr"],
-            controlMode=self.p.VELOCITY_CONTROL,
-            force=0, targetVelocity=0)
+    def reset_pose(self):
+        self.reset_abd()
+        self.reset_leg()
 
     def get_foot_contacts(self):
         # [FR, FL, BR, BL]
@@ -408,18 +399,21 @@ class Solo12PybulletEnv(gym.Env):
         foot_contact_info = np.zeros(8)
 
         for leg in range(4):
-            contact_points_with_ground = self.p.getContactPoints(self.plane, self.solo12, -1, foot_ids[leg])
+            contact_points_with_ground = self.pybullet_client.getContactPoints(self.plane, self.solo12, -1,
+                                                                               foot_ids[leg])
             if len(contact_points_with_ground) > 0:
                 foot_contact_info[leg] = 1
 
             if self.is_wedge:
-                contact_points_with_wedge = self.p.getContactPoints(self.wedge, self.solo12, -1, foot_ids[leg])
+                contact_points_with_wedge = self.pybullet_client.getContactPoints(self.wedge, self.solo12, -1,
+                                                                                  foot_ids[leg])
                 if len(contact_points_with_wedge) > 0:
                     foot_contact_info[leg + 4] = 1
 
             if self.is_stairs:
                 for steps in self.stairs:
-                    contact_points_with_stairs = self.p.getContactPoints(steps, self.solo12, -1, foot_ids[leg])
+                    contact_points_with_stairs = self.pybullet_client.getContactPoints(steps, self.solo12, -1,
+                                                                                       foot_ids[leg])
                     if len(contact_points_with_stairs) > 0:
                         foot_contact_info[leg + 4] = 1
 
@@ -433,7 +427,7 @@ class Solo12PybulletEnv(gym.Env):
              estimated support plane (roll, pitch)]
         """
         pos, ori = self.get_base_pos_and_orientation()
-        rpy = self.p.getEulerFromQuaternion(ori)
+        rpy = self.pybullet_client.getEulerFromQuaternion(ori)
         rpy = np.round(rpy, 5)
 
         for val in rpy:
@@ -446,21 +440,10 @@ class Solo12PybulletEnv(gym.Env):
 
         return obs
 
-    def do_simulation(self, action, n_frames):
-        omega = 2 * self.no_of_points * self.frequency
-        leg_m_angle_cmd = self.walking_controller.test_elip(theta=self.theta)
-        self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
-        leg_m_angle_cmd = np.array(leg_m_angle_cmd)
-        leg_m_angle_vel = np.zeros(12)
-
-        for _ in range(self._frame_skip):
-            self.apply_pd_control(leg_m_angle_cmd, leg_m_angle_vel)
-            # self.apply_postion_control(leg_m_angle_cmd)
-            self.p.stepSimulation()
-
+    def estimate_terrain(self):
         contact_info = self.get_foot_contacts()
         pos, ori = self.get_base_pos_and_orientation()
-        rot_mat = self.p.getMatrixFromQuaternion(ori)
+        rot_mat = self.pybullet_client.getMatrixFromQuaternion(ori)
         rot_mat = np.array(rot_mat)
         rot_mat = np.reshape(rot_mat, (3, 3))
 
@@ -470,21 +453,30 @@ class Solo12PybulletEnv(gym.Env):
                                                                                      contact_info,
                                                                                      self.get_motor_angles(),
                                                                                      rot_mat)
-        # rpy_original = self.p.getEulerFromQuaternion(ori)
-        # print(np.degrees(rpy_original[1]))
-        # print(np.degrees(self.support_plane_estimated_pitch))
-        # print("-------------------------------")
-
         self.prev_incline_vec = plane_normal
+
+    def apply_action(self, action):
+        action = None
+        # Todo: change action
+        motor_commands = self.walking_controller.test_elip(theta=self.theta)
+        motor_commands = np.array(motor_commands)
+
+        # Update theta
+        omega = 2 * self.no_of_points * self.frequency
+        self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
+
+        # Apply action
+        for _ in range(self.frame_skip):
+            if self.pd_control_enabled:
+                self.apply_pd_control(motor_commands)
+            else:
+                self.apply_postion_control(motor_commands)
+            self.pybullet_client.stepSimulation()
+
         self.n_steps += 1
 
     def step(self, action):
-        action = transform_action(action)
-        self.do_simulation(action, n_frames=self._frame_skip)
-        o = self.get_observation()
-        reward, done = self.get_reward()
-        info = {}
-        return o, reward, done, info
+        self.apply_action(action)
 
     def termination(self, pos, orientation):
         """
@@ -496,7 +488,7 @@ class Solo12PybulletEnv(gym.Env):
             done 		: return True if termination conditions satisfied
         """
         done = False
-        rpy = self.p.getEulerFromQuaternion(orientation)
+        rpy = self.pybullet_client.getEulerFromQuaternion(orientation)
 
         if self.n_steps >= self.termination_steps:
             done = True
@@ -528,7 +520,7 @@ class Solo12PybulletEnv(gym.Env):
         robot_height_from_support_plane = 0.65
         pos, ori = self.get_base_pos_and_orientation()
 
-        rpy_orig = self.p.getEulerFromQuaternion(ori)
+        rpy_orig = self.pybullet_client.getEulerFromQuaternion(ori)
         rpy = np.round(rpy_orig, 4)
 
         current_height = round(pos[2], 5)
