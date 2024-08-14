@@ -1,4 +1,5 @@
 import gym
+from gym import spaces
 import numpy as np
 import pybullet
 import pybullet_data
@@ -101,6 +102,7 @@ class Solo12PybulletEnv(gym.Env):
         self.ori_history_length = 3
         self.ori_history_queue = deque([0] * 3 * self.ori_history_length,
                                        maxlen=3 * self.ori_history_length)  # observation queue
+        self.observation_space = []
 
         if self.gait == 'trot':
             self.phase = [0, self.no_of_points, self.no_of_points, 0]
@@ -133,6 +135,29 @@ class Solo12PybulletEnv(gym.Env):
                                                             baseOrientation=[0.0, 0.0, 0.0, 1])
                 self.stairs.append(step)
                 self.pybullet_client.changeDynamics(step, -1, lateralFriction=0.8)
+
+        abduction_low = np.radians(-45)
+        abduction_high = np.radians(45)
+        other_motor_low = np.radians(-90)
+        other_motor_high = np.radians(90)
+
+        action_low = np.array([other_motor_low, other_motor_low, abduction_low,
+                               other_motor_low, other_motor_low, abduction_low,
+                               other_motor_low, other_motor_low, abduction_low,
+                               other_motor_low, other_motor_low, abduction_low], dtype=np.float32)
+
+        action_high = np.array([other_motor_high, other_motor_high, abduction_high,
+                                other_motor_high, other_motor_high, abduction_high,
+                                other_motor_high, other_motor_high, abduction_high,
+                                other_motor_high, other_motor_high, abduction_high], dtype=np.float32)
+
+        self.action_space = spaces.Box(low=action_low, high=action_high, dtype=np.float32)
+
+        observation_dim = len(self.get_observation())
+        observation_low = -np.inf * np.ones(observation_dim, dtype=np.float32)
+        observation_high = np.inf * np.ones(observation_dim, dtype=np.float32)
+
+        self.observation_space = spaces.Box(low=observation_low, high=observation_high, dtype=np.float32)
 
     def hard_reset(self):
         """
@@ -419,26 +444,38 @@ class Solo12PybulletEnv(gym.Env):
 
         return foot_contact_info
 
+    # def get_observation(self):
+    #     """
+    #     This function returns the current observation of the environment for the interested task
+    #     Ret:
+    #         obs: [R(t-2), P(t-2), Y(t-2), R(t-1), P(t-1), Y(t-1), R(t), P(t), Y(t),
+    #          estimated support plane (roll, pitch)]
+    #     """
+    #     pos, ori = self.get_base_pos_and_orientation()
+    #     rpy = self.pybullet_client.getEulerFromQuaternion(ori)
+    #     rpy = np.round(rpy, 5)
+    #
+    #     for val in rpy:
+    #         if self.add_imu_noise:
+    #             val = add_noise(val)
+    #         self.ori_history_queue.append(val)
+    #
+    #     obs = np.concatenate((self.ori_history_queue,
+    #                           [self.support_plane_estimated_roll, self.support_plane_estimated_pitch])).ravel()
+    #
+    #     return obs
+
     def get_observation(self):
-        """
-        This function returns the current observation of the environment for the interested task
-        Ret:
-            obs: [R(t-2), P(t-2), Y(t-2), R(t-1), P(t-1), Y(t-1), R(t), P(t), Y(t),
-             estimated support plane (roll, pitch)]
-        """
-        pos, ori = self.get_base_pos_and_orientation()
+        motor_angles = np.array(self.get_motor_angles(), dtype=np.float32)
+        motor_velocities = np.array(self.get_motor_velocities(), dtype=np.float32)
+
+        _, ori = self.get_base_pos_and_orientation()
         rpy = self.pybullet_client.getEulerFromQuaternion(ori)
-        rpy = np.round(rpy, 5)
+        rpy = np.array(rpy, dtype=np.float32)  # Radians
 
-        for val in rpy:
-            if self.add_imu_noise:
-                val = add_noise(val)
-            self.ori_history_queue.append(val)
+        observation = np.concatenate((motor_angles, motor_velocities, rpy))
 
-        obs = np.concatenate((self.ori_history_queue,
-                              [self.support_plane_estimated_roll, self.support_plane_estimated_pitch])).ravel()
-
-        return obs
+        return observation
 
     def estimate_terrain(self):
         contact_info = self.get_foot_contacts()
@@ -456,27 +493,41 @@ class Solo12PybulletEnv(gym.Env):
         self.prev_incline_vec = plane_normal
 
     def apply_action(self, action):
-        action = None
         # Todo: change action
-        motor_commands = self.walking_controller.test_elip(theta=self.theta)
-        motor_commands = np.array(motor_commands)
+        # motor_commands = self.walking_controller.test_elip(theta=self.theta)
+        # motor_commands = np.array(motor_commands)
 
         # Update theta
-        omega = 2 * self.no_of_points * self.frequency
-        self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
+        # omega = 2 * self.no_of_points * self.frequency
+        # self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
+
+        force_visualizing_counter = 0
+        action = np.array(action)
 
         # Apply action
         for _ in range(self.frame_skip):
             if self.pd_control_enabled:
-                self.apply_pd_control(motor_commands)
+                self.apply_pd_control(action)
             else:
-                self.apply_postion_control(motor_commands)
+                self.apply_postion_control(action)
             self.pybullet_client.stepSimulation()
+            if self.n_steps % 300 == 0:
+                force_visualizing_counter += 1
+                link = np.random.randint(0, 11)
+                pertub_range = [0, -120, 120, -200, 200]
+                y_force = pertub_range[np.random.randint(0, 4)]
+                if force_visualizing_counter % 10 == 0:
+                    self.apply_ext_force(x_f=0, y_f=y_force, link_index=1, visualize=True, life_time=0.2)
 
         self.n_steps += 1
 
     def step(self, action):
         self.apply_action(action)
+        self.estimate_terrain()
+        ob = self.get_observation()
+        reward, done = self.reward()
+        info = {}
+        return ob, reward, done, info
 
     def termination(self, pos, orientation):
         """
@@ -561,3 +612,48 @@ class Solo12PybulletEnv(gym.Env):
             '''
 
         return reward, done
+
+    def reward(self):
+        pos, ori = self.get_base_pos_and_orientation()
+        rpy_orig = self.pybullet_client.getEulerFromQuaternion(ori)
+        rpy = np.round(rpy_orig, 4)
+        x_reward = pos[0] - self.last_base_position[0]
+        y_reward = -np.abs(pos[1])
+        roll_reward = -np.abs(np.degrees(rpy[0]))
+        pitch_reward = -np.abs(np.degrees(rpy[1]))
+        yaw_reward = -np.abs(np.degrees(rpy[2]))
+
+        done = self.termination(pos, ori)
+
+        if done:
+            reward = -20
+        else:
+            reward = 2 * x_reward + y_reward + roll_reward + pitch_reward + yaw_reward
+
+        return reward, done
+
+    def apply_ext_force(self, x_f, y_f, link_index=1, visualize=False, life_time=0.01):
+        """
+        Function to apply external force on the robot
+        :param x_f: external force in x direction
+        :param y_f: external force in y direction
+        :param link_index: link index of the robot where the force needs to be applied
+        :param visualize: bool, whether to visualize external force by arrow symbols
+        :param life_time: lifetime of the visualization
+        :return:
+        """
+        force_applied = [x_f, y_f, 0]
+        self.pybullet_client.applyExternalForce(self.solo12, link_index, forceObj=force_applied, posObj=[0, 0, 0],
+                                                flags=self.pybullet_client.LINK_FRAME)
+        f_mag = np.linalg.norm(np.array(force_applied))
+
+        if visualize and f_mag != 0.0:
+            point_of_force = self.pybullet_client.getLinkState(self.solo12, link_index)[0]
+
+            lam = 1 / (2 * f_mag)
+            dummy_pt = [point_of_force[0] - lam * force_applied[0],
+                        point_of_force[1] - lam * force_applied[1],
+                        point_of_force[2] - lam * force_applied[2]]
+            self.pybullet_client.addUserDebugText(str(round(f_mag, 2)) + " N", dummy_pt, [0.13, 0.54, 0.13],
+                                                  textSize=2, lifeTime=life_time)
+            self.pybullet_client.addUserDebugLine(point_of_force, dummy_pt, [0, 0, 1], 3, lifeTime=life_time)

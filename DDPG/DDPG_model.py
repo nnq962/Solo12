@@ -1,7 +1,7 @@
 import torch.autograd
 import torch.optim as optim
-from network import *
-from utils import *
+from DDPG.network import *
+from DDPG.utils import *
 from torch.autograd import Variable
 
 

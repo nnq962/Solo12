@@ -1,5 +1,5 @@
 import os
-from DDPG import DDPGagent
+from DDPG_model import DDPGagent
 from utils import *
 from gym.envs.registration import register
 import time

@@ -37,7 +37,7 @@ def leg_frame_to_body_frame_solo12(leg_id, hip_angle, knee_angle, abd_angle):
     """
     # Robot paramters
     body_length = 0.3892
-    body_width = 0.203  # 0.2939
+    body_width = 0.2939
 
     leg = solo12_kinematic.Solo12Kinematic()
     x_l, y_l = leg.forward_kinematics([hip_angle, knee_angle])
