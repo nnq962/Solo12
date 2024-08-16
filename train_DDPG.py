@@ -15,8 +15,6 @@ env = solo12_pybullet.Solo12PybulletEnv(
     pd_control_enabled=True
 )
 
-# env = NormalizedEnv(gym.make("Pendulum-v0"))
-
 agent = DDPGagent(env)
 noise = OUNoise(env.action_space)
 batch_size = 256
@@ -43,26 +41,17 @@ for episode in range(episodes):
         if done:
             sys.stdout.write(
                 "episode: {}, reward: {}, average_reward: {} \n".format(episode, np.round(episode_reward, decimals=2),
-                                                                         np.mean(rewards[-10:])))
+                                                                        np.mean(rewards[-10:])))
             break
 
     rewards.append(episode_reward)
     avg_rewards.append(np.mean(rewards[-10:]))
 
-    if (episode + 1) % 50 == 0:
-        torch.save({
-            'episode': episode + 1,
-            'actor_state_dict': agent.actor.state_dict(),
-            'critic_state_dict': agent.critic.state_dict(),
-            'actor_optimizer_state_dict': agent.actor_optimizer.state_dict(),
-            'critic_optimizer_state_dict': agent.critic_optimizer.state_dict(),
-        }, f'checkpoint_episode_{episode + 1}.pth')
-        print(f"Model saved at episode {episode + 1}")
+    # Save models every 200 episodes
+    if episode % 200 == 0:
+        save_models_for_training(agent, f"ddpg_agent_{episode}.pth")
 
-torch.save({
-        'actor_state_dict': agent.actor.state_dict(),
-        'critic_state_dict': agent.critic.state_dict(),
-    }, "ddpg_agent_final.pth")
+save_models_for_testing(agent, "ddpg_agent_final.pth")
 
 plt.plot(rewards)
 plt.plot(avg_rewards)
