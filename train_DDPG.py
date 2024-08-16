@@ -5,7 +5,7 @@ import sys
 from DDPG.utils import *
 
 steps = 4000
-episodes = 3000
+episodes = 2000
 
 env = solo12_pybullet.Solo12PybulletEnv(
     render=False,
@@ -48,8 +48,8 @@ for episode in range(episodes):
     avg_rewards.append(np.mean(rewards[-10:]))
 
     # Save models every 200 episodes
-    if episode % 200 == 0:
-        save_models_for_training(agent, f"ddpg_agent_{episode}.pth")
+    # if episode % 200 == 0:
+    #     save_models_for_training(agent, f"ddpg_agent_{episode}.pth")
 
 save_models_for_testing(agent, "ddpg_agent_final.pth")
 

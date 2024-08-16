@@ -520,14 +520,14 @@ class Solo12PybulletEnv(gym.Env):
             else:
                 self.apply_postion_control(action)
             self.pybullet_client.stepSimulation()
-            # if self.n_steps % 300 == 0:
-            #     force_visualizing_counter += 1
-            #     link = np.random.randint(0, 11)
-            #     pertub_range = [0, -1200, 1200, -2000, 2000]
-            #     y_force = pertub_range[np.random.randint(0, 4)]
-            #     if force_visualizing_counter % 10 == 0:
-            #         self.apply_ext_force(x_f=0, y_f=y_force, link_index=1, visualize=True, life_time=3)
-            #         # TODO: change it
+            if self.n_steps > 300 and self.n_steps % 300 == 0:
+                force_visualizing_counter += 1
+                link = np.random.randint(0, 11)
+                pertub_range = [0, -2000, 2000, -1500, 1500]
+                y_force = pertub_range[np.random.randint(0, 4)]
+                if force_visualizing_counter % 15 == 0:
+                    self.apply_ext_force(x_f=0, y_f=y_force, link_index=link, visualize=True, life_time=3)
+                    # TODO: change it
 
         self.n_steps += 1
 
@@ -638,7 +638,7 @@ class Solo12PybulletEnv(gym.Env):
         if done:
             reward = -20
         else:
-            reward = 2 * x_reward + y_reward + roll_reward + pitch_reward + yaw_reward
+            reward = x_reward + y_reward + roll_reward + pitch_reward + 2 * yaw_reward
 
         return reward, done
 
@@ -670,7 +670,7 @@ class Solo12PybulletEnv(gym.Env):
 
     def compute_motor_angles(self, x, y, z, leg_name):
         """
-        Compute angles from x,z,y
+        Compute angles from x,y,z
         :param x: x coordinate
         :param y: y coordinate
         :param z: z coordinate

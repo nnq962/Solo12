@@ -3,9 +3,14 @@ import numpy as np
 from Robot import solo12_pybullet
 
 
-robot = solo12_pybullet.Solo12PybulletEnv(on_rack=False)
 action = [0.0] * 12
 action = np.array(action)
-steps = 20000
+steps = 2000
+total_reward = 0
+robot = solo12_pybullet.Solo12PybulletEnv(on_rack=False, end_steps=steps)
+
 for i in range(steps):
-    robot.step(action)
+    state, reward, done, _ = robot.step(action)
+    total_reward += reward
+
+print("Total reward: ", total_reward)

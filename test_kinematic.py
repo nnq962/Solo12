@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+from Robot import solo12_kinematic
 matplotlib.use('Qt5Agg')  # Hoặc 'Qt5Agg', tùy thuộc vào hệ thống của bạn
+kinematic = solo12_kinematic.Solo12Kinematic()
 
 phi = np.radians(90)
 step_length = 0.08
@@ -28,6 +30,10 @@ for _ in range(100):
     x_t, y_t, z_t = np.array(
         [[np.cos(phi), 0, np.sin(phi)], [0, 1, 0], [-np.sin(phi), 0, np.cos(phi)]]) @ np.array(
         [x, y, 0])
+
+    _, _, motor_abd = kinematic.inverse_kinematics(x_t, y_t, z_t, 1)
+    print(np.degrees(motor_abd))
+
     x_l.append(x_t)
     y_l.append(y_t)
     z_l.append(z_t)
