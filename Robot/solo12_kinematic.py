@@ -34,7 +34,7 @@ class Solo12Kinematic:
         theta = np.arctan2(z, -y)
         new_coords = np.array([x, y / np.cos(theta), z])
         motor_hip, motor_knee = self.inverse_2_d(new_coords[0], new_coords[1], br)
-        return motor_knee, motor_hip, theta
+        return motor_hip, motor_knee, theta
 
     def forward_kinematics(self, q):
         """

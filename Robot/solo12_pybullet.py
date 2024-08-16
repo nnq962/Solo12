@@ -6,6 +6,7 @@ import pybullet_data
 from Robot import pybullet_client
 from Robot import walking_controller
 from Robot import get_terrain_normal as normal_estimator
+from Robot import solo12_kinematic
 from collections import deque
 
 motor_names = [
@@ -59,8 +60,8 @@ class Solo12PybulletEnv(gym.Env):
                  pd_control_enabled=True,
                  motor_kp=30.5,
                  motor_kd=0.68,
-                 extension_amplitude=0.08,
-                 swing_amplitude=0.06):
+                 step_length=0.08,
+                 step_height=0.06):
 
         self.pd_control_enabled = pd_control_enabled
         self.incline_deg = deg
@@ -83,8 +84,8 @@ class Solo12PybulletEnv(gym.Env):
         self.downhill = downhill
         self.add_imu_noise = imu_noise
         self.termination_steps = end_steps
-        self.extension_amplitude = extension_amplitude
-        self.swing_amplitude = swing_amplitude
+        self.step_length = step_length / 2
+        self.step_height = step_height
 
         self.solo12 = None
         self.motor_id_list = None
@@ -95,6 +96,8 @@ class Solo12PybulletEnv(gym.Env):
         self.wedgeOrientation = None
         self.robot_landing_height = None
         self.wedge = None
+        self.x_init = 0
+        self.y_init = -0.23
         self.support_plane_estimated_pitch = 0
         self.support_plane_estimated_roll = 0
         self.incline_ori = 0
@@ -102,6 +105,9 @@ class Solo12PybulletEnv(gym.Env):
         self.prev_incline_vec = (0, 0, 1)
         self.last_base_position = [0, 0, 0]
         self.n_steps = 0
+        self.leg_name_to_sol_branch_Solo12 = {'fl': 1, 'fr': 1, 'hl': 0, 'hr': 0}
+        self.kinematic = solo12_kinematic.Solo12Kinematic()
+        self.motor_offset = [np.pi / 2, 0, 0]
 
         self.ori_history_length = 3
         self.ori_history_queue = deque([0] * 3 * self.ori_history_length,
@@ -496,32 +502,32 @@ class Solo12PybulletEnv(gym.Env):
         self.prev_incline_vec = plane_normal
 
     def apply_action(self, action):
-        action = None
-        # Todo: change action
-        motor_commands = self.walking_controller.test_elip(theta=self.theta)
-        motor_commands = np.array(motor_commands)
+        # motor_commands = self.walking_controller.test_elip(theta=self.theta)
+        # motor_commands = np.array(motor_commands)
 
         # Update theta
-        omega = 2 * self.no_of_points * self.frequency
-        self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
+        # omega = 2 * self.no_of_points * self.frequency
+        # self.theta = np.fmod(omega * self.dt + self.theta, 2 * self.no_of_points)
 
         force_visualizing_counter = 0
-        # action = np.array(action)
+        action = np.array(action)
+        action = self.transform_action(action)
 
         # Apply action
         for _ in range(self.frame_skip):
             if self.pd_control_enabled:
-                self.apply_pd_control(motor_commands)
+                self.apply_pd_control(action)
             else:
-                self.apply_postion_control(motor_commands)
+                self.apply_postion_control(action)
             self.pybullet_client.stepSimulation()
-            if self.n_steps % 300 == 0:
-                force_visualizing_counter += 1
-                link = np.random.randint(0, 11)
-                pertub_range = [0, -1200, 1200, -2000, 2000]
-                y_force = pertub_range[np.random.randint(0, 4)]
-                if force_visualizing_counter % 10 == 0:
-                    self.apply_ext_force(x_f=0, y_f=y_force, link_index=1, visualize=True, life_time=3)
+            # if self.n_steps % 300 == 0:
+            #     force_visualizing_counter += 1
+            #     link = np.random.randint(0, 11)
+            #     pertub_range = [0, -1200, 1200, -2000, 2000]
+            #     y_force = pertub_range[np.random.randint(0, 4)]
+            #     if force_visualizing_counter % 10 == 0:
+            #         self.apply_ext_force(x_f=0, y_f=y_force, link_index=1, visualize=True, life_time=3)
+            #         # TODO: change it
 
         self.n_steps += 1
 
@@ -662,23 +668,37 @@ class Solo12PybulletEnv(gym.Env):
                                                   textSize=2, lifeTime=life_time)
             self.pybullet_client.addUserDebugLine(point_of_force, dummy_pt, [0, 0, 1], 3, lifeTime=life_time)
 
-    def gen_signal(self, t, phase):
-        """Generates a sinusoidal reference leg trajectory.
+    def compute_motor_angles(self, x, y, z, leg_name):
+        """
+        Compute angles from x,z,y
+        :param x: x coordinate
+        :param y: y coordinate
+        :param z: z coordinate
+        :param leg_name: leg name
+        :return: a list contain motor angles
+        """
+        return list(self.kinematic.inverse_kinematics(x, y, z, self.leg_name_to_sol_branch_Solo12[leg_name]))
 
-        The foot (leg tip) will move in a ellipse specified by extension and swing
-        amplitude.
+    def gen_signal(self, t, phase):
+        """Generates a modified sinusoidal reference leg trajectory with half-circle shape.
 
         Args:
           t: Current time in simulation.
           phase: The phase offset for the periodic trajectory.
 
+
         Returns:
-          The desired leg extension and swing angle at the current time.
+          The desired leg x and y angle at the current time.
         """
         period = 1 / self.frequency
-        extension = self.extension_amplitude * np.cos(2 * np.pi / period * t + phase)
-        swing = self.swing_amplitude * np.sin(2 * np.pi / period * t + phase)
-        return extension, swing
+        theta = (2 * np.pi / period * t + phase) % (2 * np.pi)
+
+        x = -self.step_length * np.cos(theta) + self.x_init
+        if theta > np.pi:
+            y = self.y_init
+        else:
+            y = self.step_height * np.sin(theta) + self.y_init
+        return x, y
 
     def signal(self, t):
         """Generates the trotting gait for the robot.
@@ -690,12 +710,25 @@ class Solo12PybulletEnv(gym.Env):
           A numpy array of the reference leg positions.
         """
         # Generates the leg trajectories for the two digonal pair of legs.
-        ext_first_pair, sw_first_pair = self.gen_signal(t, 0)
-        ext_second_pair, sw_second_pair = self.gen_signal(t, np.pi)
+        ext_first_pair, sw_first_pair = self.gen_signal(t, phase=0)
+        ext_second_pair, sw_second_pair = self.gen_signal(t, phase=np.pi)
 
-        trotting_signal = np.array([
-            sw_first_pair, sw_second_pair, sw_second_pair, sw_first_pair, ext_first_pair,
-            ext_second_pair, ext_second_pair, ext_first_pair
-        ])
-        signal = np.array(self.init_pose) + trotting_signal
-        return signal
+        motors_fl = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "fl")
+        motors_hr = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "hr")
+        motors_fr = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "fr")
+        motors_hl = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "hl")
+
+        motors_fl[0] += self.motor_offset[0]
+        motors_hr[0] += self.motor_offset[0]
+        motors_fr[0] += self.motor_offset[0]
+        motors_hl[0] += self.motor_offset[0]
+
+        trotting_signal = np.array([*motors_fl, *motors_hr, *motors_fr, *motors_hl])
+        return trotting_signal
+
+    def get_time_since_reset(self):
+        return self.n_steps * self.dt
+
+    def transform_action(self, action):
+        action += self.signal(self.get_time_since_reset())
+        return action
