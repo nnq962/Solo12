@@ -5,17 +5,18 @@ import torch.autograd
 
 
 class CriticNetwork(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size1, hidden_size2, output_size):
         """
         Parameters for Critic network
         :param input_size: state size + action size
-        :param hidden_size: hidden size
+        :param hidden_size1: hidden size
+        :param hidden_size2: hidden size
         :param output_size: output size
         """
         super(CriticNetwork, self).__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        self.linear1 = nn.Linear(input_size, hidden_size1)
+        self.linear2 = nn.Linear(hidden_size1, hidden_size2)
+        self.linear3 = nn.Linear(hidden_size2, output_size)
 
     def forward(self, state, action):
         """
@@ -30,11 +31,11 @@ class CriticNetwork(nn.Module):
 
 
 class ActorNetwork(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size1, hidden_size2, output_size):
         super(ActorNetwork, self).__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear3 = nn.Linear(hidden_size, output_size)
+        self.linear1 = nn.Linear(input_size, hidden_size1)
+        self.linear2 = nn.Linear(hidden_size1, hidden_size2)
+        self.linear3 = nn.Linear(hidden_size2, output_size)
 
     def forward(self, state):
         """

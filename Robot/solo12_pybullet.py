@@ -17,17 +17,28 @@ motor_names = [
 ]
 
 
-def transform_action(action):
-    action = np.clip(action, -1, 1)
-    action[:4] = (action[:4] + 1) / 2  # Step lengths are positive always
-    action[:4] = action[:4] * 0.136  # Max steplength = 0.136
-    action[4:8] = action[4:8] * np.pi / 2  # PHI can be [-pi/2, pi/2]
-    action[8:12] = 0.07 * (action[8:12] + 1) / 2  # elipse center y is positive always
-    action[12:16] = action[12:16] * 0.04  # x
-    action[16:20] = action[16:20] * 0.035  # Max allowed Z-shift due to abduction limits is 3.5cm
-    action[17] = -action[17]
-    action[19] = -action[19]
+# def transform_action(action):
+#     action = np.clip(action, -1, 1)
+#     action[:4] = (action[:4] + 1) / 2  # Step lengths are positive always
+#     action[:4] = action[:4] * 0.136  # Max steplength = 0.136
+#     action[4:8] = action[4:8] * np.pi / 2  # PHI can be [-pi/2, pi/2]
+#     action[8:12] = 0.07 * (action[8:12] + 1) / 2  # elipse center y is positive always
+#     action[12:16] = action[12:16] * 0.04  # x
+#     action[16:20] = action[16:20] * 0.035  # Max allowed Z-shift due to abduction limits is 3.5cm
+#     action[17] = -action[17]
+#     action[19] = -action[19]
+#
+#     return action
 
+def transform_action(action):
+    action[0:2] = action[0:2] * (np.pi / 2)
+    action[2] = action[2] * (np.pi / 4)
+    action[3:5] = action[3:5] * (np.pi / 2)
+    action[5] = action[5] * (np.pi / 4)
+    action[6:8] = action[6:8] * (np.pi / 2)
+    action[8] = action[8] * (np.pi / 4)
+    action[9:11] = action[9:11] * (np.pi / 2)
+    action[11] = action[11] * (np.pi / 4)
     return action
 
 
@@ -511,6 +522,9 @@ class Solo12PybulletEnv(gym.Env):
 
         force_visualizing_counter = 0
         action = np.array(action)
+        print("action: ", action)
+        action = transform_action(action)
+        print(action)
         action = self.transform_action(action)
 
         # Apply action
@@ -533,7 +547,7 @@ class Solo12PybulletEnv(gym.Env):
 
     def step(self, action):
         self.apply_action(action)
-        self.estimate_terrain()
+        # self.estimate_terrain()
         ob = self.get_observation()
         reward, done = self.reward()
         info = {}

@@ -16,19 +16,19 @@ env = solo12_pybullet.Solo12PybulletEnv(
 )
 
 agent = DDPGagent(env)
-noise = OUNoise(env.action_space)
+# noise = OUNoise(env.action_space)
 batch_size = 256
 rewards = []
 avg_rewards = []
 
 for episode in range(episodes):
     state = env.reset()
-    noise.reset()
+    # noise.reset()
     episode_reward = 0
 
     for step in range(steps):
         action = agent.get_action(state)
-        action = noise.get_action(action, step)
+        # action = noise.get_action(action, step)
         new_state, reward, done, _ = env.step(action)
         agent.memory.push(state, action, reward, new_state, done)
 
