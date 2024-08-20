@@ -522,9 +522,7 @@ class Solo12PybulletEnv(gym.Env):
 
         force_visualizing_counter = 0
         action = np.array(action)
-        print("action: ", action)
         action = transform_action(action)
-        print(action)
         action = self.transform_action(action)
 
         # Apply action
