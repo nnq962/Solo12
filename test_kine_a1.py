@@ -2,9 +2,9 @@ import numpy as np
 
 
 def foot_position_in_hip_frame_to_joint_angle(foot_position, l_hip_sign=1):
-    l_up = 0.2
-    l_low = 0.2
-    l_hip = 0.08505 * l_hip_sign
+    l_up = 0.16
+    l_low = 0.16
+    l_hip = 0.0 * l_hip_sign
     x, y, z = foot_position[0], foot_position[1], foot_position[2]
     theta_knee = -np.arccos(
         (x ** 2 + y ** 2 + z ** 2 - l_hip ** 2 - l_low ** 2 - l_up ** 2) /
@@ -19,9 +19,9 @@ def foot_position_in_hip_frame_to_joint_angle(foot_position, l_hip_sign=1):
 
 def foot_position_in_hip_frame(angles, l_hip_sign=1):
     theta_ab, theta_hip, theta_knee = angles[0], angles[1], angles[2]
-    l_up = 0.2
-    l_low = 0.2
-    l_hip = 0.08505 * l_hip_sign
+    l_up = 0.16
+    l_low = 0.16
+    l_hip = 0.0 * l_hip_sign
     leg_distance = np.sqrt(l_up ** 2 + l_low ** 2 +
                            2 * l_up * l_low * np.cos(theta_knee))
     eff_swing = theta_hip + theta_knee / 2
@@ -37,12 +37,12 @@ def foot_position_in_hip_frame(angles, l_hip_sign=1):
 
 
 f_p = [0.03019163492206934, 0.08505, -0.3450919662651284]
-ang = np.radians([5, -60, 100])
+ang = np.radians([0, -25.8719, 74.3636])
 # print(ang)
 position = foot_position_in_hip_frame(ang)
-print(np.degrees(foot_position_in_hip_frame_to_joint_angle(position)))
-print(foot_position_in_hip_frame(ang, 1))
+print("angles   :", np.degrees(foot_position_in_hip_frame_to_joint_angle(position)))
+print("xyz      :", foot_position_in_hip_frame(ang, 1))
 
-# from motion_imitation.robots import solo12_kinematic
-# obj = solo12_kinematic.Solo12Kinematic()
-# print()
+from motion_imitation.robots import solo12_kinematic
+obj = solo12_kinematic.Solo12Kinematic()
+print(np.degrees(obj.inverse_kinematics(0.05, -0.25, 0, 1)))

@@ -39,11 +39,13 @@ JOINT_OFFSETS = np.array(
 PI = math.pi
 
 MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
+
+# update hip default positions
 _DEFAULT_HIP_POSITIONS = (
-    (0.17, -0.135, 0),
-    (0.17, 0.13, 0),
-    (-0.195, -0.135, 0),
-    (-0.195, 0.13, 0),
+    (0.1946, -0.1015, 0),
+    (0.1946, 0.1015, 0),
+    (-0.1946, -0.1015, 0),
+    (-0.1946, 0.1015, 0),
 )
 
 COM_OFFSET = -np.array([0.012731, 0.002186, 0.000515])
@@ -67,45 +69,10 @@ LOWER_NAME_PATTERN = re.compile(r"\w+_lower_\w+")
 TOE_NAME_PATTERN = re.compile(r"\w+_toe\d*")
 IMU_NAME_PATTERN = re.compile(r"imu\d*")
 
-URDF_FILENAME = "a1/a1.urdf"
+URDF_FILENAME = "simulation/solo12.urdf"
 
 _BODY_B_FIELD_NUMBER = 2
 _LINK_A_FIELD_NUMBER = 3
-
-
-def foot_position_in_hip_frame_to_joint_angle(foot_position, l_hip_sign=1):
-    l_up = 0.2
-    l_low = 0.2
-    l_hip = 0.08505 * l_hip_sign
-    x, y, z = foot_position[0], foot_position[1], foot_position[2]
-    theta_knee = -np.arccos(
-        (x ** 2 + y ** 2 + z ** 2 - l_hip ** 2 - l_low ** 2 - l_up ** 2) /
-        (2 * l_low * l_up))
-    l = np.sqrt(l_up ** 2 + l_low ** 2 + 2 * l_up * l_low * np.cos(theta_knee))
-    theta_hip = np.arcsin(-x / l) - theta_knee / 2
-    c1 = l_hip * y - l * np.cos(theta_hip + theta_knee / 2) * z
-    s1 = l * np.cos(theta_hip + theta_knee / 2) * y + l_hip * z
-    theta_ab = np.arctan2(s1, c1)
-    return np.array([theta_ab, theta_hip, theta_knee])
-
-
-def foot_position_in_hip_frame(angles, l_hip_sign=1):
-    theta_ab, theta_hip, theta_knee = angles[0], angles[1], angles[2]
-    l_up = 0.2
-    l_low = 0.2
-    l_hip = 0.08505 * l_hip_sign
-    leg_distance = np.sqrt(l_up ** 2 + l_low ** 2 +
-                           2 * l_up * l_low * np.cos(theta_knee))
-    eff_swing = theta_hip + theta_knee / 2
-
-    off_x_hip = -leg_distance * np.sin(eff_swing)
-    off_z_hip = -leg_distance * np.cos(eff_swing)
-    off_y_hip = l_hip
-
-    off_x = off_x_hip
-    off_y = np.cos(theta_ab) * off_y_hip - np.sin(theta_ab) * off_z_hip
-    off_z = np.sin(theta_ab) * off_y_hip + np.cos(theta_ab) * off_z_hip
-    return np.array([off_x, off_y, off_z])
 
 
 def analytical_leg_jacobian(leg_angles, leg_id):
@@ -152,8 +119,8 @@ def foot_positions_in_base_frame(foot_angles):
     return foot_positions + HIP_OFFSETS
 
 
-class A1(minitaur.Minitaur):
-    """A simulation for the Laikago robot."""
+class Solo12(minitaur.Minitaur):
+    """A simulation for the Solo12 robot."""
 
     # At high replanning frequency, inaccurate values of BODY_MASS/INERTIA
     # doesn't seem to matter much. However, these values should be better tuned
