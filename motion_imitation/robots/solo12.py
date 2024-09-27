@@ -48,7 +48,8 @@ _DEFAULT_HIP_POSITIONS = (
     (-0.1946, 0.1015, 0),
 )
 
-COM_OFFSET = -np.array([0.012731, 0.002186, 0.000515])
+# change com_offset
+COM_OFFSET = -np.array([-0.00082966, 0.00000105, -0.00060210])
 HIP_OFFSETS = np.array([[0.183, -0.047, 0.], [0.183, 0.047, 0.],
                         [-0.183, -0.047, 0.], [-0.183, 0.047, 0.]
                         ]) + COM_OFFSET
@@ -105,11 +106,6 @@ def analytical_leg_jacobian(leg_angles, leg_id):
     return J
 
 
-# For JIT compilation
-foot_position_in_hip_frame_to_joint_angle(np.random.uniform(size=3), 1)
-foot_position_in_hip_frame_to_joint_angle(np.random.uniform(size=3), -1)
-
-
 def foot_positions_in_base_frame(foot_angles):
     foot_angles = foot_angles.reshape((4, 3))
     foot_positions = np.zeros((4, 3))
@@ -121,53 +117,6 @@ def foot_positions_in_base_frame(foot_angles):
 
 class Solo12(minitaur.Minitaur):
     """A simulation for the Solo12 robot."""
-
-    # At high replanning frequency, inaccurate values of BODY_MASS/INERTIA
-    # doesn't seem to matter much. However, these values should be better tuned
-    # when the replan frequency is low (e.g. using a less beefy CPU).
-    MPC_BODY_MASS = 108 / 9.8
-    MPC_BODY_INERTIA = np.array((0.017, 0, 0, 0, 0.057, 0, 0, 0, 0.064)) * 4.
-    MPC_BODY_HEIGHT = 0.24
-    MPC_VELOCITY_MULTIPLIER = 0.5
-    ACTION_CONFIG = [
-        locomotion_gym_config.ScalarField(name="FR_hip_motor",
-                                          upper_bound=0.802851455917,
-                                          lower_bound=-0.802851455917),
-        locomotion_gym_config.ScalarField(name="FR_upper_joint",
-                                          upper_bound=4.18879020479,
-                                          lower_bound=-1.0471975512),
-        locomotion_gym_config.ScalarField(name="FR_lower_joint",
-                                          upper_bound=-0.916297857297,
-                                          lower_bound=-2.69653369433),
-        locomotion_gym_config.ScalarField(name="FL_hip_motor",
-                                          upper_bound=0.802851455917,
-                                          lower_bound=-0.802851455917),
-        locomotion_gym_config.ScalarField(name="FL_upper_joint",
-                                          upper_bound=4.18879020479,
-                                          lower_bound=-1.0471975512),
-        locomotion_gym_config.ScalarField(name="FL_lower_joint",
-                                          upper_bound=-0.916297857297,
-                                          lower_bound=-2.69653369433),
-        locomotion_gym_config.ScalarField(name="RR_hip_motor",
-                                          upper_bound=0.802851455917,
-                                          lower_bound=-0.802851455917),
-        locomotion_gym_config.ScalarField(name="RR_upper_joint",
-                                          upper_bound=4.18879020479,
-                                          lower_bound=-1.0471975512),
-        locomotion_gym_config.ScalarField(name="RR_lower_joint",
-                                          upper_bound=-0.916297857297,
-                                          lower_bound=-2.69653369433),
-        locomotion_gym_config.ScalarField(name="RL_hip_motor",
-                                          upper_bound=0.802851455917,
-                                          lower_bound=-0.802851455917),
-        locomotion_gym_config.ScalarField(name="RL_upper_joint",
-                                          upper_bound=4.18879020479,
-                                          lower_bound=-1.0471975512),
-        locomotion_gym_config.ScalarField(name="RL_lower_joint",
-                                          upper_bound=-0.916297857297,
-                                          lower_bound=-2.69653369433),
-    ]
-
     def __init__(
             self,
             pybullet_client,
@@ -199,7 +148,7 @@ class Solo12(minitaur.Minitaur):
             ABDUCTION_D_GAIN, HIP_D_GAIN, KNEE_D_GAIN
         ]
 
-        super(A1, self).__init__(
+        super().__init__(
             pybullet_client=pybullet_client,
             time_step=time_step,
             action_repeat=action_repeat,
@@ -220,16 +169,16 @@ class Solo12(minitaur.Minitaur):
             reset_time=reset_time)
 
     def _LoadRobotURDF(self):
-        a1_urdf_path = self.GetURDFFile()
+        solo12_urdf_path = self.GetURDFFile()
         if self._self_collision_enabled:
             self.quadruped = self._pybullet_client.loadURDF(
-                a1_urdf_path,
+                solo12_urdf_path,
                 self._GetDefaultInitPosition(),
                 self._GetDefaultInitOrientation(),
                 flags=self._pybullet_client.URDF_USE_SELF_COLLISION)
         else:
             self.quadruped = self._pybullet_client.loadURDF(
-                a1_urdf_path, self._GetDefaultInitPosition(),
+                solo12_urdf_path, self._GetDefaultInitPosition(),
                 self._GetDefaultInitOrientation())
 
     def _SettleDownForReset(self, default_motor_angles, reset_time):

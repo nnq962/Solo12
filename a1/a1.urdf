@@ -31,6 +31,8 @@
   <material name="white">
     <color rgba="1.0 1.0 1.0 1.0"/>
   </material>
+
+
   <link name="trunk">
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -51,6 +53,8 @@
       <inertia ixx="0.01683993" ixy="8.3902e-05" ixz="0.000597679" iyy="0.056579028" iyz="2.5134e-05" izz="0.064713601"/>
     </inertial>
   </link>
+
+
   <joint name="imu_joint" type="fixed">
     <parent link="trunk"/>
     <child link="imu_link"/>
@@ -76,6 +80,7 @@
       </geometry>
     </collision>
   </link>
+
   <joint name="FR_hip_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0.183 -0.047 0"/>
     <parent link="trunk"/>
@@ -84,6 +89,7 @@
     <dynamics damping="0" friction="0"/>
     <limit effort="20" lower="-0.802851455917" upper="0.802851455917" velocity="52.4"/>
   </joint>
+
   <link name="FR_hip">
     <visual>
       <origin rpy="3.14159265359 0 0" xyz="0 0 0"/>
