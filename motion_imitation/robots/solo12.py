@@ -15,6 +15,7 @@ from motion_imitation.robots import laikago_motor
 from motion_imitation.robots import minitaur
 from motion_imitation.robots import robot_config
 from motion_imitation.envs import locomotion_gym_config
+from motion_imitation.robots import solo12_kinematic
 
 NUM_MOTORS = 12
 NUM_LEGS = 4
