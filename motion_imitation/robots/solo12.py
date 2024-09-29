@@ -20,22 +20,22 @@ from motion_imitation.robots import solo12_kinematic
 NUM_MOTORS = 12
 NUM_LEGS = 4
 MOTOR_NAMES = [
-    "motor_hip_fl", "motor_knee_fl", "motor_abduction_fl",
-    "motor_hip_hr", "motor_knee_hr", "motor_abduction_hr",
-    "motor_hip_fr", "motor_knee_fr", "motor_abduction_fr",
-    "motor_hip_hl", "motor_knee_hl", "motor_abduction_hl"
+    "motor_abduction_fl", "motor_hip_fl", "motor_knee_fl",
+    "motor_abduction_hr", "motor_hip_hr", "motor_knee_hr",
+    "motor_abduction_fr", "motor_hip_fr", "motor_knee_fr",
+    "motor_abduction_hl", "motor_hip_hl", "motor_knee_hl",
 ]
 
 INIT_RACK_POSITION = [0, 0, 1]
 INIT_POSITION = [0, 0, 0.32]
 JOINT_DIRECTIONS = np.ones(12)
+ABDUCTION_JOINT_OFFSET = 0.0
 HIP_JOINT_OFFSET = 0.0
-UPPER_LEG_JOINT_OFFSET = 0.0
 KNEE_JOINT_OFFSET = 0.0
 DOFS_PER_LEG = 3
 
 JOINT_OFFSETS = np.array(
-    [HIP_JOINT_OFFSET, UPPER_LEG_JOINT_OFFSET, KNEE_JOINT_OFFSET] * 4)
+    [ABDUCTION_JOINT_OFFSET, HIP_JOINT_OFFSET, KNEE_JOINT_OFFSET] * 4)
 PI = math.pi
 
 MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
@@ -62,19 +62,9 @@ KNEE_P_GAIN = 100.0
 KNEE_D_GAIN = 2.0
 
 # Bases on the readings from Laikago's default pose.
-INIT_MOTOR_ANGLES = np.array([0, 0.9, -1.8] * NUM_LEGS)
+INIT_MOTOR_ANGLES = np.array([0, 0.79, -1.7] * NUM_LEGS)
 
-HIP_NAME_PATTERN = re.compile(r"\w+_hip_\w+")
-UPPER_NAME_PATTERN = re.compile(r"\w+_upper_\w+")
-LOWER_NAME_PATTERN = re.compile(r"\w+_lower_\w+")
-TOE_NAME_PATTERN = re.compile(r"\w+_toe\d*")
-IMU_NAME_PATTERN = re.compile(r"imu\d*")
-
-URDF_FILENAME = "simulation/solo12.urdf"
-
-_BODY_B_FIELD_NUMBER = 2
-_LINK_A_FIELD_NUMBER = 3
-
+URDF_FILENAME = "motion_imitation/robots/simulation/solo12_new.urdf"
 
 def analytical_leg_jacobian(leg_angles, leg_id):
     """
@@ -136,6 +126,8 @@ class Solo12(minitaur.Minitaur):
         self._urdf_filename = urdf_filename
         self._allow_knee_contact = allow_knee_contact
         self._enable_clip_motor_commands = enable_clip_motor_commands
+        self.plane = None
+
 
         motor_kp = [
             ABDUCTION_P_GAIN, HIP_P_GAIN, KNEE_P_GAIN, ABDUCTION_P_GAIN,
@@ -168,6 +160,36 @@ class Solo12(minitaur.Minitaur):
             enable_action_filter=enable_action_filter,
             reset_time=reset_time)
 
+    def Reset(self, reload_urdf=True, default_motor_angles=None, reset_time=3.0):
+        if reload_urdf:
+            self._LoadRobotURDF()
+            if self._on_rack:
+                self.rack_constraint = (self._CreateRackConstraint(self._GetDefaultInitPosition(),
+                                                                   self._GetDefaultInitOrientation()))
+            self._BuildJointNameToIdDict()
+            self._RemoveDefaultJointDamping()
+            self._BuildMotorIdList()
+            self.ResetPose(add_constraint=True)
+        else:
+            self._pybullet_client.resetBasePositionAndOrientation(self.quadruped,
+                                                                  self._GetDefaultInitPosition(),
+                                                                  self._GetDefaultInitOrientation())
+            self._pybullet_client.resetBaseVelocity(self.quadruped,
+                                                    [0, 0, 0],
+                                                    [0, 0, 0])
+            self.ResetPose(add_constraint=False)
+
+        self._overheat_counter = np.zeros(self.num_motors)
+        self._motor_enabled_list = [True] * self.num_motors
+        self._observation_history.clear()
+        self._step_counter = 0
+        self._state_action_counter = 0
+        self._is_safe = True
+        self._last_action = None
+        # self._SettleDownForReset(default_motor_angles, reset_time)
+        if self._enable_action_filter:
+            self._ResetActionFilter()
+
     def _LoadRobotURDF(self):
         solo12_urdf_path = self.GetURDFFile()
         if self._self_collision_enabled:
@@ -180,6 +202,7 @@ class Solo12(minitaur.Minitaur):
             self.quadruped = self._pybullet_client.loadURDF(
                 solo12_urdf_path, self._GetDefaultInitPosition(),
                 self._GetDefaultInitOrientation())
+        self.plane = self._pybullet_client.loadURDF("plane.urdf")
 
     def _SettleDownForReset(self, default_motor_angles, reset_time):
         self.ReceiveObservation()
@@ -202,19 +225,17 @@ class Solo12(minitaur.Minitaur):
         return _DEFAULT_HIP_POSITIONS
 
     def GetFootContacts(self):
-        all_contacts = self._pybullet_client.getContactPoints(bodyA=self.quadruped)
+        # [FR, FL, BR, BL]
+        foot_ids = [2, 5, 8, 11]
+        contacts = np.zeros(4)
 
-        contacts = [False, False, False, False]
-        for contact in all_contacts:
-            # Ignore self contacts
-            if contact[_BODY_B_FIELD_NUMBER] == self.quadruped:
-                continue
-            try:
-                toe_link_index = self._foot_link_ids.index(
-                    contact[_LINK_A_FIELD_NUMBER])
-                contacts[toe_link_index] = True
-            except ValueError:
-                continue
+        for leg in range(4):
+            contact_points_with_ground = self.pybullet_client.getContactPoints(self.plane,
+                                                                               self.quadruped,
+                                                                               -1,
+                                                                               foot_ids[leg])
+            if len(contact_points_with_ground) > 0:
+                contacts[leg] = 1
 
         return contacts
 
@@ -224,20 +245,22 @@ class Solo12(minitaur.Minitaur):
             joint_id = self._joint_name_to_id[name]
             self._pybullet_client.setJointMotorControl2(
                 bodyIndex=self.quadruped,
-                jointIndex=(joint_id),
+                jointIndex=joint_id,
                 controlMode=self._pybullet_client.VELOCITY_CONTROL,
                 targetVelocity=0,
                 force=0)
+
         for name, i in zip(MOTOR_NAMES, range(len(MOTOR_NAMES))):
-            if "hip_joint" in name:
-                angle = INIT_MOTOR_ANGLES[i] + HIP_JOINT_OFFSET
-            elif "upper_joint" in name:
-                angle = INIT_MOTOR_ANGLES[i] + UPPER_LEG_JOINT_OFFSET
-            elif "lower_joint" in name:
-                angle = INIT_MOTOR_ANGLES[i] + KNEE_JOINT_OFFSET
-            else:
-                raise ValueError("The name %s is not recognized as a motor joint." %
-                                 name)
+            # if "motor_abduction" in name:
+            #     angle = INIT_MOTOR_ANGLES[i] + ABDUCTION_JOINT_OFFSET
+            # elif "motor_hip" in name:
+            #     angle = INIT_MOTOR_ANGLES[i] + HIP_JOINT_OFFSET
+            # elif "motor_knee" in name:
+            #     angle = INIT_MOTOR_ANGLES[i] + KNEE_JOINT_OFFSET
+            # else:
+            #     raise ValueError("The name %s is not recognized as a motor joint." %
+            #                      name)
+            angle = INIT_MOTOR_ANGLES[i]
             self._pybullet_client.resetJointState(self.quadruped,
                                                   self._joint_name_to_id[name],
                                                   angle,
@@ -245,50 +268,6 @@ class Solo12(minitaur.Minitaur):
 
     def GetURDFFile(self):
         return self._urdf_filename
-
-    def _BuildUrdfIds(self):
-        """Build the link Ids from its name in the URDF file.
-
-        Raises:
-          ValueError: Unknown category of the joint name.
-        """
-        num_joints = self.pybullet_client.getNumJoints(self.quadruped)
-        self._hip_link_ids = [-1]
-        self._leg_link_ids = []
-        self._motor_link_ids = []
-        self._lower_link_ids = []
-        self._foot_link_ids = []
-        self._imu_link_ids = []
-
-        for i in range(num_joints):
-            joint_info = self.pybullet_client.getJointInfo(self.quadruped, i)
-            joint_name = joint_info[1].decode("UTF-8")
-            joint_id = self._joint_name_to_id[joint_name]
-            if HIP_NAME_PATTERN.match(joint_name):
-                self._hip_link_ids.append(joint_id)
-            elif UPPER_NAME_PATTERN.match(joint_name):
-                self._motor_link_ids.append(joint_id)
-            # We either treat the lower leg or the toe as the foot link, depending on
-            # the urdf version used.
-            elif LOWER_NAME_PATTERN.match(joint_name):
-                self._lower_link_ids.append(joint_id)
-            elif TOE_NAME_PATTERN.match(joint_name):
-                # assert self._urdf_filename == URDF_WITH_TOES
-                self._foot_link_ids.append(joint_id)
-            elif IMU_NAME_PATTERN.match(joint_name):
-                self._imu_link_ids.append(joint_id)
-            else:
-                raise ValueError("Unknown category of joint %s" % joint_name)
-
-        self._leg_link_ids.extend(self._lower_link_ids)
-        self._leg_link_ids.extend(self._foot_link_ids)
-
-        # assert len(self._foot_link_ids) == NUM_LEGS
-        self._hip_link_ids.sort()
-        self._motor_link_ids.sort()
-        self._lower_link_ids.sort()
-        self._foot_link_ids.sort()
-        self._leg_link_ids.sort()
 
     def _GetMotorNames(self):
         return MOTOR_NAMES
@@ -330,7 +309,7 @@ class Solo12(minitaur.Minitaur):
         """
         if self._enable_clip_motor_commands:
             motor_commands = self._ClipMotorCommands(motor_commands)
-        super(A1, self).ApplyAction(motor_commands, motor_control_mode)
+        super().ApplyAction(motor_commands, motor_control_mode)
 
     def _ClipMotorCommands(self, motor_commands):
         """Clips motor commands.

@@ -286,6 +286,7 @@ class A1(minitaur.Minitaur):
             self.quadruped = self._pybullet_client.loadURDF(
                 a1_urdf_path, self._GetDefaultInitPosition(),
                 self._GetDefaultInitOrientation())
+        self.plane = self._pybullet_client.loadURDF("plane.urdf")
 
     def _SettleDownForReset(self, default_motor_angles, reset_time):
         self.ReceiveObservation()
@@ -395,6 +396,13 @@ class A1(minitaur.Minitaur):
         self._lower_link_ids.sort()
         self._foot_link_ids.sort()
         self._leg_link_ids.sort()
+
+        # _imu_link_ids = imu_joint
+        # _hip_link_ids: hip_joint + hip_fixed
+        # _motor_link_ids: upper_joint
+        # _lower_link_ids: lower_joint
+        # _foot_link_ids: toe_fixed
+        # _leg_link_ids: lower_joint + toe_fixed
 
     def _GetMotorNames(self):
         return MOTOR_NAMES

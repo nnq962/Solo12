@@ -7,7 +7,7 @@
   <material name="black">
     <color rgba="0.0 0.0 0.0 1.0"/>
   </material>
-  <material name="blue">
+  <material name=" ">
     <color rgba="0.0 0.0 0.8 1.0"/>
   </material>
   <material name="green">
@@ -96,9 +96,9 @@
       <geometry>
         <mesh filename="meshes/hip.obj" scale="1 1 1"/>
       </geometry>
-      <material name="orange">
+      <material name="abc">
       <!-- Điều chỉnh độ mờ với alpha = 0.1 (50% trong suốt) -->
-      <color rgba="1 0.65 0 0.2"/>
+      <color rgba="1 0.65 0 1"/>
       </material>
     </visual>
     <collision>
@@ -714,129 +714,7 @@
     </actuator>
   </transmission>
 
-<!-- Khối cầu 1 -->
-<link name="red_sphere_1">
-  <visual>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-    <material name="red">
-      <color rgba="1 0 0 1"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-  </collision>
-  <inertial>
-    <mass value="0.1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-  </inertial>
-</link>
 
-<!-- Khối cầu 2 -->
-<link name="red_sphere_2">
-  <visual>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-    <material name="red">
-      <color rgba="1 0 0 1"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-  </collision>
-  <inertial>
-    <mass value="0.1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-  </inertial>
-</link>
-
-<!-- Khối cầu 3 -->
-<link name="red_sphere_3">
-  <visual>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-    <material name="red">
-      <color rgba="1 0 0 1"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-  </collision>
-  <inertial>
-    <mass value="0.1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-  </inertial>
-</link>
-
-<!-- Khối cầu 4 -->
-<link name="red_sphere_4">
-  <visual>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-    <material name="red">
-      <color rgba="1 0 0 1"/>
-    </material>
-  </visual>
-  <collision>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <geometry>
-      <sphere radius="0.03"/>
-    </geometry>
-  </collision>
-  <inertial>
-    <mass value="0.1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-  </inertial>
-</link>
-
-
-<joint name="red_sphere_1_to_base" type="fixed">
-  <parent link="trunk"/>
-  <child link="red_sphere_1"/>
-  <origin xyz="0.17 -0.135 0" rpy="0 0 0"/>
-</joint>
-
-<!-- Liên kết khối cầu 2 -->
-<joint name="red_sphere_2_to_base" type="fixed">
-  <parent link="trunk"/>
-  <child link="red_sphere_2"/>
-  <origin xyz="0.17 0.13 0" rpy="0 0 0"/>
-</joint>
-
-<!-- Liên kết khối cầu 3 -->
-<joint name="red_sphere_3_to_base" type="fixed">
-  <parent link="trunk"/>
-  <child link="red_sphere_3"/>
-  <origin xyz="-0.195 -0.135 0" rpy="0 0 0"/>
-</joint>
-
-<!-- Liên kết khối cầu 4 -->
-<joint name="red_sphere_4_to_base" type="fixed">
-  <parent link="trunk"/>
-  <child link="red_sphere_4"/>
-  <origin xyz="-0.195 0.13 0" rpy="0 0 0"/>
-</joint>
 
 </robot>
 
