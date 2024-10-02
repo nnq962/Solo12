@@ -716,5 +716,114 @@
 
 
 
+
+  <!-- 4 spheres linked to the base -->
+  <!-- Sphere 1 -->
+  <link name="sphere_1">
+    <inertial>
+      <mass value="0.001"/> <!-- Điều chỉnh khối lượng -->
+      <origin rpy="0 0 0" xyz="0.14544602 -0.2035496 -0.21173298"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.014"/> <!-- Điều chỉnh bán kính -->
+      </geometry>
+    </collision>
+    <visual>
+      <geometry>
+        <sphere radius="0.014"/> <!-- Điều chỉnh bán kính -->
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Sphere 2 -->
+  <link name="sphere_2">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="0.14544602 0.1991776 -0.21173298"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </collision>
+    <visual>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Sphere 3 -->
+  <link name="sphere_3">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="-0.22055398 -0.2035496 -0.21173298"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </collision>
+    <visual>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Sphere 4 -->
+  <link name="sphere_4">
+    <inertial>
+      <mass value="0.001"/>
+      <origin rpy="0 0 0" xyz="-0.22055398 0.1991776 -0.21173298"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </collision>
+    <visual>
+      <geometry>
+        <sphere radius="0.014"/>
+      </geometry>
+    </visual>
+  </link>
+
+  <!-- Joints connecting spheres to the base -->
+  <joint name="joint_sphere_1_base" type="fixed">
+    <parent link="trunk"/>
+    <child link="sphere_1"/>
+    <origin xyz="0.14544602 -0.2035496 -0.21173298" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="joint_sphere_2_base" type="fixed">
+    <parent link="trunk"/>
+    <child link="sphere_2"/>
+    <origin xyz="0.14544602 0.1991776 -0.21173298" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="joint_sphere_3_base" type="fixed">
+    <parent link="trunk"/>
+    <child link="sphere_3"/>
+    <origin xyz="-0.22055398 -0.2035496 -0.21173298" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="joint_sphere_4_base" type="fixed">
+    <parent link="trunk"/>
+    <child link="sphere_4"/>
+    <origin xyz="-0.22055398 0.1991776 -0.21173298" rpy="0 0 0"/>
+  </joint>
+
+
+
 </robot>
 

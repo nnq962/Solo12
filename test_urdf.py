@@ -8,7 +8,7 @@ physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # Đường dẫn tới các tệp dữ liệu URDF
 
 # Tải mô hình URDF
-robot_id = p.loadURDF("motion_imitation/robots/simulation2/solo12_test_2.urdf", [0, 0, 0.5])
+robot_id = p.loadURDF("motion_imitation/robots/simulation2/solo12_new.urdf", [0, 0, 0.5])
 p.createConstraint(robot_id,
                    -1, -1, -1,
                    p.JOINT_FIXED,

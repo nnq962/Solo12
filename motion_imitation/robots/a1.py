@@ -89,7 +89,7 @@ LOWER_NAME_PATTERN = re.compile(r"\w+_lower_\w+")
 TOE_NAME_PATTERN = re.compile(r"\w+_toe\d*")
 IMU_NAME_PATTERN = re.compile(r"imu\d*")
 
-URDF_FILENAME = "a1/a1.urdf"
+URDF_FILENAME = "a1_custom/a1.urdf"
 
 _BODY_B_FIELD_NUMBER = 2
 _LINK_A_FIELD_NUMBER = 3
@@ -385,7 +385,7 @@ class A1(minitaur.Minitaur):
             elif IMU_NAME_PATTERN.match(joint_name):
                 self._imu_link_ids.append(joint_id)
             else:
-                raise ValueError("Unknown category of joint %s" % joint_name)
+                continue
 
         self._leg_link_ids.extend(self._lower_link_ids)
         self._leg_link_ids.extend(self._foot_link_ids)
@@ -500,6 +500,10 @@ class A1(minitaur.Minitaur):
             np.asarray(joint_angles) -
             np.asarray(self._motor_offset)[joint_position_idxs],
             self._motor_direction[joint_position_idxs])
+
+        print(self._motor_offset)
+        print(self._motor_direction)
+        print("------")
 
         # Return the joing index (the same as when calling GetMotorAngles) as well
         # as the angles.

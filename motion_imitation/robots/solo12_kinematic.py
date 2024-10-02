@@ -5,46 +5,44 @@ class Solo12Kinematic:
     """
     Solo12 kinematic model
     """
-    def __init__(self, l1=0.16, l2=0.16):
-        self.l1 = l1
-        self.l2 = l2
 
-    def inverse_2_d(self, x, y, br):
-        sol_branch = br
-        t1 = ((-4 * self.l2 * y + np.sqrt(
-            16 * self.l2 ** 2 * y ** 2 - 4 * (-self.l1 ** 2 + self.l2 ** 2 - 2 * self.l2 * x + x ** 2 + y ** 2)
-            * (-self.l1 ** 2 + self.l2 ** 2 + 2 * self.l2 * x + x ** 2 + y ** 2)))
-              / (2. * (self.l1 ** 2 - self.l2 ** 2 - 2 * self.l2 * x - x ** 2 - y ** 2)))
+    def __init__(self, l_hip=0.05945, l_up=0.16, l_low=0.16):
+        self.l_hip = l_hip
+        self.l_up = l_up
+        self.l_low = l_low
 
-        t2 = (-4 * self.l2 * y - np.sqrt(
-            16 * self.l2 ** 2 * y ** 2 - 4 * (-self.l1 ** 2 + self.l2 ** 2 - 2 * self.l2 * x + x ** 2 + y ** 2)
-            * (-self.l1 ** 2 + self.l2 ** 2 + 2 * self.l2 * x + x ** 2 + y ** 2))) / (
-                         2. * (self.l1 ** 2 - self.l2 ** 2 - 2 * self.l2 * x - x ** 2 - y ** 2))
+    def inverse_kinematics(self, foot_position, l_hip_sign=1):
+        l_hip = self.l_hip * l_hip_sign
+        l_up = self.l_up
+        l_low = self.l_low
 
-        if sol_branch:
-            t = t2
-        else:
-            t = t1
-        th12 = np.arctan2(2 * t, (1 - t ** 2))
-        th1 = np.arctan2(y - self.l2 * np.sin(th12), x - self.l2 * np.cos(th12))
-        th2 = th12 - th1
-        return [th1, th2]
+        x, y, z = foot_position[0], foot_position[1], foot_position[2]
+        theta_knee = -np.arccos(
+            (x ** 2 + y ** 2 + z ** 2 - l_hip ** 2 - l_low ** 2 - l_up ** 2) /
+            (2 * l_low * l_up))
+        l = np.sqrt(l_up ** 2 + l_low ** 2 + 2 * l_up * l_low * np.cos(theta_knee))
+        theta_hip = np.arcsin(-x / l) - theta_knee / 2
+        c1 = l_hip * y - l * np.cos(theta_hip + theta_knee / 2) * z
+        s1 = l * np.cos(theta_hip + theta_knee / 2) * y + l_hip * z
+        theta_ab = np.arctan2(s1, c1)
+        return np.array([theta_ab, theta_hip, theta_knee])
 
-    def inverse_kinematics(self, x, y, z, br):
-        theta = np.arctan2(z, -y)
-        new_coords = np.array([x, y / np.cos(theta), z])
-        motor_hip, motor_knee = self.inverse_2_d(new_coords[0], new_coords[1], br)
-        return motor_hip, motor_knee, theta
+    def forward_kinematics(self, angles, l_hip_sign=1):
+        theta_ab, theta_hip, theta_knee = angles[0], angles[1], angles[2]
 
-    def forward_kinematics(self, q):
-        """
-        Forward kinematics of the Solo12
-        Args:
-        -- q : Active joint angles, i.e., [theta1, theta4], angles of the links 1 and 4 (the driven links)
-        Return:
-        -- valid : Specifies if the result is valid
-        -- x : End-effector position
-        """
-        x = self.l1 * np.cos(q[0]) + self.l2 * np.cos(q[0] + q[1])
-        y = self.l1 * np.sin(q[0]) + self.l2 * np.sin(q[0] + q[1])
-        return [x, y]
+        l_hip = self.l_hip * l_hip_sign
+        l_up = self.l_up
+        l_low = self.l_low
+
+        leg_distance = np.sqrt(l_up ** 2 + l_low ** 2 +
+                               2 * l_up * l_low * np.cos(theta_knee))
+        eff_swing = theta_hip + theta_knee / 2
+
+        off_x_hip = -leg_distance * np.sin(eff_swing)
+        off_z_hip = -leg_distance * np.cos(eff_swing)
+        off_y_hip = l_hip
+
+        off_x = off_x_hip
+        off_y = np.cos(theta_ab) * off_y_hip - np.sin(theta_ab) * off_z_hip
+        off_z = np.sin(theta_ab) * off_y_hip + np.cos(theta_ab) * off_z_hip
+        return np.array([off_x, off_y, off_z])

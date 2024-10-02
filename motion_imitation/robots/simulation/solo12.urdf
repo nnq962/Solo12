@@ -472,4 +472,46 @@
     </inertial>
   </link>
 
+  <!-- Sphere 1 -->
+  <link name="sphere_1">
+    <visual>
+      <geometry>
+        <sphere radius="0.012"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Fixed joints connecting the spheres to the base -->
+  <joint name="joint_sphere_1_base" type="fixed">
+    <parent link="base"/>
+    <child link="sphere_1"/>
+    <origin xyz="0.19377034 -0.27476112 -0.16903458" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Sphere 2 -->
+  <link name="sphere_2">
+    <visual>
+      <geometry>
+        <sphere radius="0.012"/>
+      </geometry>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Fixed joints connecting the spheres to the base -->
+  <joint name="joint_sphere_2_base" type="fixed">
+    <parent link="base"/>
+    <child link="sphere_2"/>
+    <origin xyz="0.19377034 0.27476112 -0.16903458" rpy="0 0 0"/>
+  </joint>
+
 </robot>

@@ -1,70 +1,63 @@
-import os
-import inspect
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(os.path.dirname(currentdir))
-os.sys.path.insert(0, parentdir)
-
-import math
-import re
 import numpy as np
-import pybullet as pyb  # pytype: disable=import-error
+import pybullet_data
+from pybullet_utils import bullet_client
+import pybullet as p
 
-from motion_imitation.robots import laikago_constants
 from motion_imitation.robots import laikago_motor
 from motion_imitation.robots import minitaur
 from motion_imitation.robots import robot_config
-from motion_imitation.envs import locomotion_gym_config
 from motion_imitation.robots import solo12_kinematic
 
-NUM_MOTORS = 12
-NUM_LEGS = 4
-MOTOR_NAMES = [
+num_motors = 12
+num_legs = 4
+motor_names = [
+    "motor_abduction_fr", "motor_hip_fr", "motor_knee_fr",
     "motor_abduction_fl", "motor_hip_fl", "motor_knee_fl",
     "motor_abduction_hr", "motor_hip_hr", "motor_knee_hr",
-    "motor_abduction_fr", "motor_hip_fr", "motor_knee_fr",
     "motor_abduction_hl", "motor_hip_hl", "motor_knee_hl",
 ]
 
-INIT_RACK_POSITION = [0, 0, 1]
-INIT_POSITION = [0, 0, 0.32]
-JOINT_DIRECTIONS = np.ones(12)
-ABDUCTION_JOINT_OFFSET = 0.0
-HIP_JOINT_OFFSET = 0.0
-KNEE_JOINT_OFFSET = 0.0
-DOFS_PER_LEG = 3
+init_rack_position = [0, 0, 1]
+init_position = [0, 0, 0.32]
+joint_directions = np.ones(12)
+abduction_joint_offset = 0.0
+hip_joint_offset = 0.0
+knee_joint_offset = 0.0
+dofs_per_leg = 3
 
-JOINT_OFFSETS = np.array(
-    [ABDUCTION_JOINT_OFFSET, HIP_JOINT_OFFSET, KNEE_JOINT_OFFSET] * 4)
-PI = math.pi
+joint_offsets = np.array(
+    [abduction_joint_offset, hip_joint_offset, knee_joint_offset] * 4)
 
-MAX_MOTOR_ANGLE_CHANGE_PER_STEP = 0.2
+max_motor_angle_change_per_step = 0.2
 
 # update hip default positions
-_DEFAULT_HIP_POSITIONS = (
+default_hip_positions = (
     (0.1946, -0.1015, 0),
     (0.1946, 0.1015, 0),
     (-0.1946, -0.1015, 0),
     (-0.1946, 0.1015, 0),
 )
 
-# change com_offset
-COM_OFFSET = -np.array([-0.00082966, 0.00000105, -0.00060210])
-HIP_OFFSETS = np.array([[0.183, -0.047, 0.], [0.183, 0.047, 0.],
-                        [-0.183, -0.047, 0.], [-0.183, 0.047, 0.]
-                        ]) + COM_OFFSET
+com_offset = np.array([-0.00082966, 0.00000105, -0.00060210])
+hip_offsets = np.array([[0.1946, -0.0875, 0],
+                        [0.1946, 0.0875, 0],
+                        [-0.1946, -0.0875, 0],
+                        [-0.1946, 0.0875, 0]]) + com_offset
 
-ABDUCTION_P_GAIN = 100.0
-ABDUCTION_D_GAIN = 1.
-HIP_P_GAIN = 100.0
-HIP_D_GAIN = 2.0
-KNEE_P_GAIN = 100.0
-KNEE_D_GAIN = 2.0
+abduction_p_gain = 100.0
+abduction_d_gain = 1.
+hip_p_gain = 100.0
+hip_d_gain = 2.0
+knee_p_gain = 100.0
+knee_d_gain = 2.0
 
-# Bases on the readings from Laikago's default pose.
-INIT_MOTOR_ANGLES = np.array([0, 0.79, -1.7] * NUM_LEGS)
+init_motor_angles = np.array([0, 0.7, -1.4,
+                              0, 0.7, -1.4,
+                              0, -0.7, 1.4,
+                              0, -0.7, 1.4])
 
-URDF_FILENAME = "motion_imitation/robots/simulation/solo12_new.urdf"
+urdf_path = "motion_imitation/robots/simulation/solo12.urdf"
+
 
 def analytical_leg_jacobian(leg_angles, leg_id):
     """
@@ -96,21 +89,13 @@ def analytical_leg_jacobian(leg_angles, leg_id):
     return J
 
 
-def foot_positions_in_base_frame(foot_angles):
-    foot_angles = foot_angles.reshape((4, 3))
-    foot_positions = np.zeros((4, 3))
-    for i in range(4):
-        foot_positions[i] = foot_position_in_hip_frame(foot_angles[i],
-                                                       l_hip_sign=(-1) ** (i + 1))
-    return foot_positions + HIP_OFFSETS
-
-
 class Solo12(minitaur.Minitaur):
     """A simulation for the Solo12 robot."""
+
     def __init__(
             self,
-            pybullet_client,
-            urdf_filename=URDF_FILENAME,
+            render=True,
+            urdf_filename=urdf_path,
             enable_clip_motor_commands=False,
             time_step=0.001,
             action_repeat=10,
@@ -127,27 +112,35 @@ class Solo12(minitaur.Minitaur):
         self._allow_knee_contact = allow_knee_contact
         self._enable_clip_motor_commands = enable_clip_motor_commands
         self.plane = None
+        self._render = render
 
+        self.leg_name_to_sol_branch_Solo12 = {'fl': 1, 'fr': 1, 'hl': 0, 'hr': 0}
+        self.kinematic = solo12_kinematic.Solo12Kinematic()
+
+        if self._render:
+            self._pybullet_client = bullet_client.BulletClient(connection_mode=p.GUI)
+        else:
+            self._pybullet_client = bullet_client.BulletClient(connection_mode=p.DIRECT)
 
         motor_kp = [
-            ABDUCTION_P_GAIN, HIP_P_GAIN, KNEE_P_GAIN, ABDUCTION_P_GAIN,
-            HIP_P_GAIN, KNEE_P_GAIN, ABDUCTION_P_GAIN, HIP_P_GAIN, KNEE_P_GAIN,
-            ABDUCTION_P_GAIN, HIP_P_GAIN, KNEE_P_GAIN
+            abduction_p_gain, hip_p_gain, knee_p_gain, abduction_p_gain,
+            hip_p_gain, knee_p_gain, abduction_p_gain, hip_p_gain, knee_p_gain,
+            abduction_p_gain, hip_p_gain, knee_p_gain
         ]
         motor_kd = [
-            ABDUCTION_D_GAIN, HIP_D_GAIN, KNEE_D_GAIN, ABDUCTION_D_GAIN,
-            HIP_D_GAIN, KNEE_D_GAIN, ABDUCTION_D_GAIN, HIP_D_GAIN, KNEE_D_GAIN,
-            ABDUCTION_D_GAIN, HIP_D_GAIN, KNEE_D_GAIN
+            abduction_d_gain, hip_d_gain, knee_d_gain, abduction_d_gain,
+            hip_d_gain, knee_d_gain, abduction_d_gain, hip_d_gain, knee_d_gain,
+            abduction_d_gain, hip_d_gain, knee_d_gain
         ]
 
         super().__init__(
-            pybullet_client=pybullet_client,
+            pybullet_client=self._pybullet_client,
             time_step=time_step,
             action_repeat=action_repeat,
-            num_motors=NUM_MOTORS,
-            dofs_per_leg=DOFS_PER_LEG,
-            motor_direction=JOINT_DIRECTIONS,
-            motor_offset=JOINT_OFFSETS,
+            num_motors=num_motors,
+            dofs_per_leg=dofs_per_leg,
+            motor_direction=joint_directions,
+            motor_offset=joint_offsets,
             motor_overheat_protection=False,
             motor_control_mode=motor_control_mode,
             motor_model_class=laikago_motor.LaikagoMotorModel,
@@ -161,6 +154,13 @@ class Solo12(minitaur.Minitaur):
             reset_time=reset_time)
 
     def Reset(self, reload_urdf=True, default_motor_angles=None, reset_time=3.0):
+        self._pybullet_client.resetSimulation()
+        self._pybullet_client.setPhysicsEngineParameter(numSolverIterations=30)
+        self._pybullet_client.setTimeStep(0.001)
+        self._pybullet_client.setGravity(0, 0, -9.8)
+        self._pybullet_client.setAdditionalSearchPath(pybullet_data.getDataPath())
+        self.plane = self._pybullet_client.loadURDF("plane.urdf")
+
         if reload_urdf:
             self._LoadRobotURDF()
             if self._on_rack:
@@ -186,7 +186,7 @@ class Solo12(minitaur.Minitaur):
         self._state_action_counter = 0
         self._is_safe = True
         self._last_action = None
-        # self._SettleDownForReset(default_motor_angles, reset_time)
+        self._SettleDownForReset(default_motor_angles, reset_time)
         if self._enable_action_filter:
             self._ResetActionFilter()
 
@@ -202,7 +202,6 @@ class Solo12(minitaur.Minitaur):
             self.quadruped = self._pybullet_client.loadURDF(
                 solo12_urdf_path, self._GetDefaultInitPosition(),
                 self._GetDefaultInitOrientation())
-        self.plane = self._pybullet_client.loadURDF("plane.urdf")
 
     def _SettleDownForReset(self, default_motor_angles, reset_time):
         self.ReceiveObservation()
@@ -210,19 +209,15 @@ class Solo12(minitaur.Minitaur):
             return
 
         for _ in range(500):
-            self._StepInternal(
-                INIT_MOTOR_ANGLES,
-                motor_control_mode=robot_config.MotorControlMode.POSITION)
+            self._StepInternal(init_motor_angles, motor_control_mode=robot_config.MotorControlMode.POSITION)
 
         if default_motor_angles is not None:
             num_steps_to_reset = int(reset_time / self.time_step)
             for _ in range(num_steps_to_reset):
-                self._StepInternal(
-                    default_motor_angles,
-                    motor_control_mode=robot_config.MotorControlMode.POSITION)
+                self._StepInternal(default_motor_angles, motor_control_mode=robot_config.MotorControlMode.POSITION)
 
     def GetHipPositionsInBaseFrame(self):
-        return _DEFAULT_HIP_POSITIONS
+        return default_hip_positions
 
     def GetFootContacts(self):
         # [FR, FL, BR, BL]
@@ -250,17 +245,16 @@ class Solo12(minitaur.Minitaur):
                 targetVelocity=0,
                 force=0)
 
-        for name, i in zip(MOTOR_NAMES, range(len(MOTOR_NAMES))):
-            # if "motor_abduction" in name:
-            #     angle = INIT_MOTOR_ANGLES[i] + ABDUCTION_JOINT_OFFSET
-            # elif "motor_hip" in name:
-            #     angle = INIT_MOTOR_ANGLES[i] + HIP_JOINT_OFFSET
-            # elif "motor_knee" in name:
-            #     angle = INIT_MOTOR_ANGLES[i] + KNEE_JOINT_OFFSET
-            # else:
-            #     raise ValueError("The name %s is not recognized as a motor joint." %
-            #                      name)
-            angle = INIT_MOTOR_ANGLES[i]
+        for name, i in zip(motor_names, range(len(motor_names))):
+            if "motor_abduction" in name:
+                angle = init_motor_angles[i] + abduction_joint_offset
+            elif "motor_hip" in name:
+                angle = init_motor_angles[i] + hip_joint_offset
+            elif "motor_knee" in name:
+                angle = init_motor_angles[i] + knee_joint_offset
+            else:
+                raise ValueError("The name %s is not recognized as a motor joint." %
+                                 name)
             self._pybullet_client.resetJointState(self.quadruped,
                                                   self._joint_name_to_id[name],
                                                   angle,
@@ -270,21 +264,16 @@ class Solo12(minitaur.Minitaur):
         return self._urdf_filename
 
     def _GetMotorNames(self):
-        return MOTOR_NAMES
+        return motor_names
 
     def _GetDefaultInitPosition(self):
         if self._on_rack:
-            return INIT_RACK_POSITION
+            return init_rack_position
         else:
-            return INIT_POSITION
+            return init_position
 
     def _GetDefaultInitOrientation(self):
-        # The Laikago URDF assumes the initial pose of heading towards z axis,
-        # and belly towards y axis. The following transformation is to transform
-        # the Laikago initial orientation to our commonly used orientation: heading
-        # towards -x direction, and z axis is the up direction.
-        init_orientation = pyb.getQuaternionFromEuler([0., 0., 0.])
-        return init_orientation
+        return self._pybullet_client.getQuaternionFromEuler([0., 0., 0.])
 
     def GetDefaultInitPosition(self):
         """Get default initial base position."""
@@ -294,9 +283,10 @@ class Solo12(minitaur.Minitaur):
         """Get default initial base orientation."""
         return self._GetDefaultInitOrientation()
 
-    def GetDefaultInitJointPose(self):
+    @staticmethod
+    def GetDefaultInitJointPose():
         """Get default initial joint pose."""
-        joint_pose = (INIT_MOTOR_ANGLES + JOINT_OFFSETS) * JOINT_DIRECTIONS
+        joint_pose = (init_motor_angles + joint_offsets) * joint_directions
         return joint_pose
 
     def ApplyAction(self, motor_commands, motor_control_mode=None):
@@ -323,20 +313,14 @@ class Solo12(minitaur.Minitaur):
         """
 
         # clamp the motor command by the joint limit, in case weired things happens
-        max_angle_change = MAX_MOTOR_ANGLE_CHANGE_PER_STEP
+        max_angle_change = max_motor_angle_change_per_step
         current_motor_angles = self.GetMotorAngles()
         motor_commands = np.clip(motor_commands,
                                  current_motor_angles - max_angle_change,
                                  current_motor_angles + max_angle_change)
         return motor_commands
 
-    @classmethod
-    def GetConstants(cls):
-        del cls
-        return laikago_constants
-
-    def ComputeMotorAnglesFromFootLocalPosition(self, leg_id,
-                                                foot_local_position):
+    def ComputeMotorAnglesFromFootLocalPosition(self, leg_id, foot_local_position):
         """Use IK to compute the motor angles, given the foot link's local position.
 
         Args:
@@ -348,7 +332,7 @@ class Solo12(minitaur.Minitaur):
           leg. The position indices is consistent with the joint orders as returned
           by GetMotorAngles API.
         """
-        assert len(self._foot_link_ids) == self.num_legs
+        # assert len(self._foot_link_ids) == self.num_legs
         # toe_id = self._foot_link_ids[leg_id]
 
         motors_per_leg = self.num_motors // self.num_legs
@@ -356,9 +340,8 @@ class Solo12(minitaur.Minitaur):
             range(leg_id * motors_per_leg,
                   leg_id * motors_per_leg + motors_per_leg))
 
-        joint_angles = foot_position_in_hip_frame_to_joint_angle(
-            foot_local_position - HIP_OFFSETS[leg_id],
-            l_hip_sign=(-1) ** (leg_id + 1))
+        joint_angles = self.kinematic.inverse_kinematics(foot_local_position - hip_offsets[leg_id],
+                                                         l_hip_sign=(-1) ** (leg_id + 1))
 
         # Joint offset is necessary for Laikago.
         joint_angles = np.multiply(
@@ -372,11 +355,80 @@ class Solo12(minitaur.Minitaur):
 
     def GetFootPositionsInBaseFrame(self):
         """Get the robot's foot position in the base frame."""
-        motor_angles = self.GetMotorAngles()
-        return foot_positions_in_base_frame(motor_angles)
+        motor_angles = self.GetMotorAngles().reshape((4, 3))
+        foot_positions = np.zeros((4, 3))
+        for i in range(4):
+            foot_positions[i] = self.kinematic.forward_kinematics(motor_angles[i],
+                                                                  l_hip_sign=(-1) ** (i + 1))
+            print(foot_positions[i])
+        return foot_positions + hip_offsets
 
     def ComputeJacobian(self, leg_id):
         """Compute the Jacobian for a given leg."""
         # Does not work for Minitaur which has the four bar mechanism for now.
         motor_angles = self.GetMotorAngles()[leg_id * 3:(leg_id + 1) * 3]
         return analytical_leg_jacobian(motor_angles, leg_id)
+
+    # nghich ti
+    def compute_motor_angles(self, x, y, z, leg_name):
+        """
+        Compute angles from x,y,z
+        :param x: x coordinate
+        :param y: y coordinate
+        :param z: z coordinate
+        :param leg_name: leg name
+        :return: a list contain motor angles
+        """
+        return list(self.kinematic.inverse_kinematics(x, y, z))
+
+    @staticmethod
+    def gen_signal(t, phase):
+        """Generates a modified sinusoidal reference leg trajectory with half-circle shape.
+
+        Args:
+          t: Current time in simulation.
+          phase: The phase offset for the periodic trajectory.
+
+
+        Returns:
+          The desired leg x and y angle at the current time.
+        """
+        period = 1 / 2.5
+        theta = (2 * np.pi / period * t + phase) % (2 * np.pi)
+
+        x = -0.08 * np.cos(theta) + 0
+        if theta > np.pi:
+            y = -0.23
+        else:
+            y = 0.08 * np.sin(theta) - 0.23
+        return x, y
+
+    def signal(self, t):
+        """Generates the trotting gait for the robot.
+
+        Args:
+          t: Current time in simulation.
+
+        Returns:
+          A numpy array of the reference leg positions.
+        """
+        # Generates the leg trajectories for the two digonal pair of legs.
+        ext_first_pair, sw_first_pair = self.gen_signal(t, phase=0)
+        ext_second_pair, sw_second_pair = self.gen_signal(t, phase=np.pi)
+
+        motors_fl = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "fl")
+        motors_hr = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "hr")
+        motors_fr = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "fr")
+        motors_hl = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "hl")
+
+        # motors_fl[0] += np.pi / 2
+        # motors_hr[0] += np.pi / 2
+        # motors_fr[0] += np.pi / 2
+        # motors_hl[0] += np.pi / 2
+
+        trotting_signal = np.array([*motors_fl, *motors_hr, *motors_fr, *motors_hl])
+        return trotting_signal
+
+    def transform_action(self, action):
+        action += self.signal(self.GetTimeSinceReset())
+        return action

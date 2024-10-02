@@ -426,8 +426,8 @@ class Minitaur(object):
             self._BuildUrdfIds()
             self._RemoveDefaultJointDamping()
             self._BuildMotorIdList()
-            self._RecordMassInfoFromURDF()
-            self._RecordInertiaInfoFromURDF()
+            # self._RecordMassInfoFromURDF()
+            # self._RecordInertiaInfoFromURDF()
             self.ResetPose(add_constraint=True)
         else:
             self._pybullet_client.resetBasePositionAndOrientation(

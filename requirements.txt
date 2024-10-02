@@ -1,1 +1,11 @@
 numpy==1.26.4
+setuptools~=59.6.0
+pybullet~=3.2.6
+quadprog~=0.1.12
+scipy~=1.14.1
+absl-py~=2.1.0
+gym~=0.26.2
+six~=1.16.0
+attrs~=24.2.0
+inputs~=0.5
+filterpy~=1.4.5
