@@ -61,7 +61,7 @@
     <child link="abduction_FR"/>
     <axis xyz="1 0 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="20" lower="-0.802851455917" upper="0.802851455917" velocity="52.4"/>
+    <limit effort="20" lower="-1.87" upper="1.87" velocity="52.4"/>
   </joint>
 
 
@@ -96,7 +96,7 @@
     <child link="upper_FR"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-1.0471975512" upper="4.18879020479" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
   <link name="upper_FR">
@@ -130,7 +130,7 @@
     <child link="lower_FR"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-2.69653369433" upper="-0.916297857297" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -165,7 +165,7 @@
     <child link="abduction_FL"/>
     <axis xyz="1 0 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="20" lower="-0.802851455917" upper="0.802851455917" velocity="52.4"/>
+    <limit effort="20" lower="-1.87" upper="1.87" velocity="52.4"/>
   </joint>
 
 
@@ -200,7 +200,7 @@
     <child link="upper_FL"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-1.0471975512" upper="4.18879020479" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -235,7 +235,7 @@
     <child link="lower_FL"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-2.69653369433" upper="-0.916297857297" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -270,7 +270,7 @@
     <child link="abduction_HR"/>
     <axis xyz="1 0 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="20" lower="-0.802851455917" upper="0.802851455917" velocity="52.4"/>
+    <limit effort="20" lower="-1.87" upper="1.87" velocity="52.4"/>
   </joint>
 
 
@@ -305,7 +305,7 @@
     <child link="upper_HR"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-1.0471975512" upper="4.18879020479" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -340,7 +340,7 @@
     <child link="lower_HR"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-2.69653369433" upper="-0.916297857297" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -374,7 +374,7 @@
     <child link="abduction_HL"/>
     <axis xyz="1 0 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="20" lower="-0.802851455917" upper="0.802851455917" velocity="52.4"/>
+    <limit effort="20" lower="-1.87" upper="1.87" velocity="52.4"/>
   </joint>
 
 
@@ -409,7 +409,7 @@
     <child link="upper_HL"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-1.0471975512" upper="4.18879020479" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -444,7 +444,7 @@
     <child link="lower_HL"/>
     <axis xyz="0 1 0"/>
     <dynamics damping="0" friction="0"/>
-    <limit effort="55" lower="-2.69653369433" upper="-0.916297857297" velocity="28.6"/>
+    <limit effort="55" lower="-3.14" upper="3.14" velocity="28.6"/>
   </joint>
 
 
@@ -471,47 +471,5 @@
       <inertia ixx="0.002997972" ixy="0.0" ixz="-0.000141163" iyy="0.003014022" iyz="0.0" izz="3.2426e-05"/>
     </inertial>
   </link>
-
-  <!-- Sphere 1 -->
-  <link name="sphere_1">
-    <visual>
-      <geometry>
-        <sphere radius="0.012"/>
-      </geometry>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <material name="red">
-        <color rgba="1 0 0 1"/>
-      </material>
-    </visual>
-  </link>
-
-
-  <!-- Fixed joints connecting the spheres to the base -->
-  <joint name="joint_sphere_1_base" type="fixed">
-    <parent link="base"/>
-    <child link="sphere_1"/>
-    <origin xyz="0.19377034 -0.27476112 -0.16903458" rpy="0 0 0"/>
-  </joint>
-
-  <!-- Sphere 2 -->
-  <link name="sphere_2">
-    <visual>
-      <geometry>
-        <sphere radius="0.012"/>
-      </geometry>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <material name="red">
-        <color rgba="1 0 0 1"/>
-      </material>
-    </visual>
-  </link>
-
-
-  <!-- Fixed joints connecting the spheres to the base -->
-  <joint name="joint_sphere_2_base" type="fixed">
-    <parent link="base"/>
-    <child link="sphere_2"/>
-    <origin xyz="0.19377034 0.27476112 -0.16903458" rpy="0 0 0"/>
-  </joint>
 
 </robot>

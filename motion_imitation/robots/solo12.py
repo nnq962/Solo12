@@ -92,6 +92,11 @@ def analytical_leg_jacobian(leg_angles, leg_id):
 class Solo12(minitaur.Minitaur):
     """A simulation for the Solo12 robot."""
 
+    MPC_BODY_MASS = 108 / 9.8
+    MPC_BODY_INERTIA = np.array((0.017, 0, 0, 0, 0.057, 0, 0, 0, 0.064)) * 4.
+    MPC_BODY_HEIGHT = 0.24
+    MPC_VELOCITY_MULTIPLIER = 0.5
+
     def __init__(
             self,
             render=True,
@@ -114,7 +119,6 @@ class Solo12(minitaur.Minitaur):
         self.plane = None
         self._render = render
 
-        self.leg_name_to_sol_branch_Solo12 = {'fl': 1, 'fr': 1, 'hl': 0, 'hr': 0}
         self.kinematic = solo12_kinematic.Solo12Kinematic()
 
         if self._render:
@@ -360,7 +364,6 @@ class Solo12(minitaur.Minitaur):
         for i in range(4):
             foot_positions[i] = self.kinematic.forward_kinematics(motor_angles[i],
                                                                   l_hip_sign=(-1) ** (i + 1))
-            print(foot_positions[i])
         return foot_positions + hip_offsets
 
     def ComputeJacobian(self, leg_id):
@@ -368,67 +371,3 @@ class Solo12(minitaur.Minitaur):
         # Does not work for Minitaur which has the four bar mechanism for now.
         motor_angles = self.GetMotorAngles()[leg_id * 3:(leg_id + 1) * 3]
         return analytical_leg_jacobian(motor_angles, leg_id)
-
-    # nghich ti
-    def compute_motor_angles(self, x, y, z, leg_name):
-        """
-        Compute angles from x,y,z
-        :param x: x coordinate
-        :param y: y coordinate
-        :param z: z coordinate
-        :param leg_name: leg name
-        :return: a list contain motor angles
-        """
-        return list(self.kinematic.inverse_kinematics(x, y, z))
-
-    @staticmethod
-    def gen_signal(t, phase):
-        """Generates a modified sinusoidal reference leg trajectory with half-circle shape.
-
-        Args:
-          t: Current time in simulation.
-          phase: The phase offset for the periodic trajectory.
-
-
-        Returns:
-          The desired leg x and y angle at the current time.
-        """
-        period = 1 / 2.5
-        theta = (2 * np.pi / period * t + phase) % (2 * np.pi)
-
-        x = -0.08 * np.cos(theta) + 0
-        if theta > np.pi:
-            y = -0.23
-        else:
-            y = 0.08 * np.sin(theta) - 0.23
-        return x, y
-
-    def signal(self, t):
-        """Generates the trotting gait for the robot.
-
-        Args:
-          t: Current time in simulation.
-
-        Returns:
-          A numpy array of the reference leg positions.
-        """
-        # Generates the leg trajectories for the two digonal pair of legs.
-        ext_first_pair, sw_first_pair = self.gen_signal(t, phase=0)
-        ext_second_pair, sw_second_pair = self.gen_signal(t, phase=np.pi)
-
-        motors_fl = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "fl")
-        motors_hr = self.compute_motor_angles(ext_first_pair, sw_first_pair, 0, "hr")
-        motors_fr = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "fr")
-        motors_hl = self.compute_motor_angles(ext_second_pair, sw_second_pair, 0, "hl")
-
-        # motors_fl[0] += np.pi / 2
-        # motors_hr[0] += np.pi / 2
-        # motors_fr[0] += np.pi / 2
-        # motors_hl[0] += np.pi / 2
-
-        trotting_signal = np.array([*motors_fl, *motors_hr, *motors_fr, *motors_hl])
-        return trotting_signal
-
-    def transform_action(self, action):
-        action += self.signal(self.GetTimeSinceReset())
-        return action

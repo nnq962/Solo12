@@ -183,6 +183,10 @@ class Minitaur(object):
         self.rack_constraint = None
         self._overheat_counter = None
         self._motor_enabled_list = None
+        self._joint_states = None
+        self._base_position = None
+        self._base_orientation = None
+        self.last_state_time = None
 
         self._motor_overheat_protection = motor_overheat_protection
         self._on_rack = on_rack
@@ -193,6 +197,7 @@ class Minitaur(object):
         self._enable_action_interpolation = enable_action_interpolation
         self._enable_action_filter = enable_action_filter
         self._last_action = None
+        self._applied_motor_torque = None
 
         if not motor_model_class:
             raise ValueError("Must provide a motor model class!")
@@ -254,7 +259,7 @@ class Minitaur(object):
         """Steps simulation."""
         if self._enable_action_filter:
             action = self._FilterAction(action)
-        if control_mode == None:
+        if control_mode is None:
             control_mode = self._motor_control_mode
         for i in range(self._action_repeat):
             proc_action = self.ProcessAction(action, i)
@@ -749,9 +754,7 @@ class Minitaur(object):
           Motor angles, mapped to [-pi, pi].
         """
         motor_angles = [state[0] for state in self._joint_states]
-        motor_angles = np.multiply(
-            np.asarray(motor_angles) - np.asarray(self._motor_offset),
-            self._motor_direction)
+        motor_angles = np.multiply(np.asarray(motor_angles) - np.asarray(self._motor_offset),self._motor_direction)
         return motor_angles
 
     def GetMotorAngles(self):
@@ -763,9 +766,8 @@ class Minitaur(object):
         Returns:
           Motor angles polluted by noise and latency, mapped to [-pi, pi].
         """
-        motor_angles = self._AddSensorNoise(
-            np.array(self._control_observation[0:self.num_motors]),
-            self._observation_noise_stdev[0])
+        motor_angles = self._AddSensorNoise(np.array(self._control_observation[0:self.num_motors]),
+                                            self._observation_noise_stdev[0])
         return MapToMinusPiToPi(motor_angles)
 
     def GetTrueMotorVelocities(self):
@@ -775,7 +777,6 @@ class Minitaur(object):
           Velocities of all eight motors.
         """
         motor_velocities = [state[1] for state in self._joint_states]
-
         motor_velocities = np.multiply(motor_velocities, self._motor_direction)
         return motor_velocities
 
@@ -787,8 +788,7 @@ class Minitaur(object):
           Velocities of all eight motors polluted by noise and latency.
         """
         return self._AddSensorNoise(
-            np.array(self._control_observation[self.num_motors:2 *
-                                                               self.num_motors]),
+            np.array(self._control_observation[self.num_motors:2 * self.num_motors]),
             self._observation_noise_stdev[1])
 
     def GetTrueMotorTorques(self):
@@ -847,11 +847,9 @@ class Minitaur(object):
         """
         angular_velocity = self._pybullet_client.getBaseVelocity(self.quadruped)[1]
         orientation = self.GetTrueBaseOrientation()
-        return self.TransformAngularVelocityToLocalFrame(angular_velocity,
-                                                         orientation)
+        return self.TransformAngularVelocityToLocalFrame(angular_velocity, orientation)
 
-    def TransformAngularVelocityToLocalFrame(self, angular_velocity,
-                                             orientation):
+    def TransformAngularVelocityToLocalFrame(self, angular_velocity, orientation):
         """Transform the angular velocity from world frame to robot's frame.
 
         Args:
@@ -864,13 +862,13 @@ class Minitaur(object):
         # Treat angular velocity as a position vector, then transform based on the
         # orientation given by dividing (or multiplying with inverse).
         # Get inverse quaternion assuming the vector is at 0,0,0 origin.
-        _, orientation_inversed = self._pybullet_client.invertTransform(
-            [0, 0, 0], orientation)
+        _, orientation_inversed = self._pybullet_client.invertTransform([0, 0, 0], orientation)
         # Transform the angular_velocity at neutral orientation using a neutral
         # translation and reverse of the given orientation.
-        relative_velocity, _ = self._pybullet_client.multiplyTransforms(
-            [0, 0, 0], orientation_inversed, angular_velocity,
-            self._pybullet_client.getQuaternionFromEuler([0, 0, 0]))
+        relative_velocity, _ = self._pybullet_client.multiplyTransforms([0, 0, 0],
+                                                                        orientation_inversed,
+                                                                        angular_velocity,
+                                                                        self._pybullet_client.getQuaternionFromEuler([0, 0, 0]))
         return np.asarray(relative_velocity)
 
     def GetBaseRollPitchYawRate(self):
@@ -913,9 +911,8 @@ class Minitaur(object):
             or motor pwms (for Minitaur only).
           motor_control_mode: A MotorControlMode enum.
         """
-        self.last_action_time = self._state_action_counter * self.time_step
+        # self.last_action_time = self._state_action_counter * self.time_step
         control_mode = motor_control_mode
-
         if control_mode is None:
             control_mode = self._motor_control_mode
 
@@ -923,8 +920,11 @@ class Minitaur(object):
 
         q, qdot = self._GetPDObservation()
         qdot_true = self.GetTrueMotorVelocities()
-        actual_torque, observed_torque = self._motor_model.convert_to_torque(
-            motor_commands, q, qdot, qdot_true, control_mode)
+        actual_torque, observed_torque = self._motor_model.convert_to_torque(motor_commands,
+                                                                             q,
+                                                                             qdot,
+                                                                             qdot_true,
+                                                                             control_mode)
 
         # May turn off the motor
         self._ApplyOverheatProtection(actual_torque)
@@ -934,14 +934,13 @@ class Minitaur(object):
         self._observed_motor_torques = observed_torque
 
         # Transform into the motor space when applying the torque.
-        self._applied_motor_torque = np.multiply(actual_torque,
-                                                 self._motor_direction)
+        self._applied_motor_torque = np.multiply(actual_torque, self._motor_direction)
         motor_ids = []
         motor_torques = []
 
-        for motor_id, motor_torque, motor_enabled in zip(
-                self._motor_id_list, self._applied_motor_torque,
-                self._motor_enabled_list):
+        for motor_id, motor_torque, motor_enabled in zip(self._motor_id_list,
+                                                         self._applied_motor_torque,
+                                                         self._motor_enabled_list):
             if motor_enabled:
                 motor_ids.append(motor_id)
                 motor_torques.append(motor_torque)
@@ -1158,10 +1157,8 @@ class Minitaur(object):
         This function is called once per step. The observations are only updated
         when this function is called.
         """
-        self._joint_states = self._pybullet_client.getJointStates(
-            self.quadruped, self._motor_id_list)
-        self._base_position, orientation = (
-            self._pybullet_client.getBasePositionAndOrientation(self.quadruped))
+        self._joint_states = self._pybullet_client.getJointStates(self.quadruped, self._motor_id_list)
+        self._base_position, orientation = self._pybullet_client.getBasePositionAndOrientation(self.quadruped)
         # Computes the relative orientation relative to the robot's
         # initial_orientation.
         _, self._base_orientation = self._pybullet_client.multiplyTransforms(
@@ -1200,11 +1197,10 @@ class Minitaur(object):
         pd_delayed_observation = self._GetDelayedObservation(self._pd_latency)
         q = pd_delayed_observation[0:self.num_motors]
         qdot = pd_delayed_observation[self.num_motors:2 * self.num_motors]
-        return (np.array(q), np.array(qdot))
+        return np.array(q), np.array(qdot)
 
     def _GetControlObservation(self):
-        control_delayed_observation = self._GetDelayedObservation(
-            self._control_latency)
+        control_delayed_observation = self._GetDelayedObservation(self._control_latency)
         return control_delayed_observation
 
     def _AddSensorNoise(self, sensor_values, noise_stdev):

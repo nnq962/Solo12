@@ -56,10 +56,6 @@ def foot_positions_in_base_frame(foot_angles):
     return foot_positions + HIP_OFFSETS
 
 
-angle = np.array([-0.64598868, 0.70180982, -1.43836125,
-                  0.64599139, 0.70189209, -1.43836918,
-                  -0.65456973, -0.70371503, 1.41936237,
-                  0.65456689, -0.70365982, 1.41937767])
+foot = [0, -kine.l_hip, -0.23]
 
-print(foot_positions_in_base_frame(angle).tolist())
-
+print(kine.inverse_kinematics(foot, -1))
