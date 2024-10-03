@@ -23,9 +23,10 @@ from mpc_controller import torque_stance_leg_controller_quadprog as torque_stanc
 from motion_imitation.robots import solo12
 from motion_imitation.robots import robot_config
 from motion_imitation.robots.gamepad import gamepad_reader
+from motion_imitation.robots.gamepad import gamepad_pygame
 
 flags.DEFINE_string("logdir", None, "where to log trajectories.")
-flags.DEFINE_bool("use_gamepad", False,
+flags.DEFINE_bool("use_gamepad", True,
                   "whether to use gamepad to provide control input.")
 flags.DEFINE_bool("use_real_robot", False,
                   "whether to use real robot or simulation")
@@ -36,9 +37,7 @@ FLAGS = flags.FLAGS
 _NUM_SIMULATION_ITERATION_STEPS = 300
 _MAX_TIME_SECONDS = 30.
 
-_STANCE_DURATION_SECONDS = [
-                               0.3
-                           ] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
+_STANCE_DURATION_SECONDS = [0.3] * 4  # For faster trotting (v > 1.5 ms reduce this to 0.13s).
 
 # Standing
 # _DUTY_FACTOR = [1.] * 4
@@ -105,8 +104,7 @@ def _setup_controller(robot):
         initial_leg_phase=_INIT_PHASE_FULL_CYCLE,
         initial_leg_state=_INIT_LEG_STATE)
     window_size = 20 if not FLAGS.use_real_robot else 1
-    state_estimator = com_velocity_estimator.COMVelocityEstimator(
-        robot, window_size=window_size)
+    state_estimator = com_velocity_estimator.COMVelocityEstimator(robot, window_size=window_size)
     sw_controller = raibert_swing_leg_controller.RaibertSwingLegController(
         robot,
         gait_generator,
@@ -162,13 +160,15 @@ def main(argv):
             enable_action_interpolation=False,
             reset_time=2,
             time_step=0.002,
-            action_repeat=1)
+            action_repeat=1,
+            on_rack=False
+        )
 
     controller = _setup_controller(robot)
 
     controller.reset()
     if FLAGS.use_gamepad:
-        gamepad = gamepad_reader.Gamepad()
+        gamepad = gamepad_pygame.PygameKeyboardControl()
         command_function = gamepad.get_command
     else:
         command_function = _generate_example_linear_angular_speed
@@ -198,6 +198,7 @@ def main(argv):
         imu_rates.append(np.array(robot.GetBaseRollPitchYawRate()).copy())
         actions.append(hybrid_action)
         robot.Step(hybrid_action)
+        # robot._pybullet_client.resetDebugVisualizerCamera(0.75, 90, -20, robot._pybullet_client.getBasePositionAndOrientation(robot.quadruped)[0])
         current_time = robot.GetTimeSinceReset()
 
         if not FLAGS.use_real_robot:

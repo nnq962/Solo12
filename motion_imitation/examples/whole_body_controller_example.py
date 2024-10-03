@@ -31,9 +31,10 @@ from mpc_controller import torque_stance_leg_controller_quadprog as torque_stanc
 from motion_imitation.robots import a1
 from motion_imitation.robots import robot_config
 from motion_imitation.robots.gamepad import gamepad_reader
+from motion_imitation.robots.gamepad import gamepad_pygame
 
 flags.DEFINE_string("logdir", None, "where to log trajectories.")
-flags.DEFINE_bool("use_gamepad", False,
+flags.DEFINE_bool("use_gamepad", True,
                   "whether to use gamepad to provide control input.")
 flags.DEFINE_bool("use_real_robot", False,
                   "whether to use real robot or simulation")
@@ -188,7 +189,7 @@ def main(argv):
 
     controller.reset()
     if FLAGS.use_gamepad:
-        gamepad = gamepad_reader.Gamepad()
+        gamepad = gamepad_pygame.PygameKeyboardControl()
         command_function = gamepad.get_command
     else:
         command_function = _generate_example_linear_angular_speed

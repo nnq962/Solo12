@@ -9,3 +9,4 @@ six~=1.16.0
 attrs~=24.2.0
 inputs~=0.5
 filterpy~=1.4.5
+pygame~=2.6.1

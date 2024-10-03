@@ -10,11 +10,11 @@ def gen_signal(t, phase):
     period = 1 / 2.5
     theta = (2 * np.pi / period * t + phase) % (2 * np.pi)
 
-    x = -0.08 * np.cos(theta) + 0
+    x = -0.02 * np.cos(theta) + 0
     if theta > np.pi:
         y = -0.23
     else:
-        y = 0.06 * np.sin(theta) - 0.23
+        y = 0.05 * np.sin(theta) - 0.23
     z = y
     y = robot.kinematic.l_hip
     return [x, y, z]
@@ -33,21 +33,16 @@ def signal(t):
     foot_2 = gen_signal(t, phase=np.pi)
 
     motors_fr = robot.kinematic.inverse_kinematics(foot_1)
+    motors_fl = robot.kinematic.inverse_kinematics(foot_2)
+    motors_hr = robot.kinematic.inverse_kinematics(foot_2)
+    motors_hl = robot.kinematic.inverse_kinematics(foot_1)
+    a = np.concatenate((motors_fr, motors_fl, motors_hr, motors_hl))
 
-    return motors_fr
+    return a
 
+action = np.zeros(12)
 
-steps = 10000
-amplitude = 0.5
-speed = 5
+while True:
+    action = signal(robot.GetTimeSinceReset())
+    robot.Step(action, motor_control_mode)
 
-actions_and_observations = []
-init_motor_angles = np.array([0, 0.8, -1.6,
-                              0, 0.8, -1.6,
-                              0, -0.8, 1.6,
-                              0, -0.8, 1.6])
-
-
-for step_counter in range(steps):
-
-    robot.Step(init_motor_angles, motor_control_mode)

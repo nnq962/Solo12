@@ -53,10 +53,10 @@ knee_d_gain = 2.0
 
 init_motor_angles = np.array([0, 0.7, -1.4,
                               0, 0.7, -1.4,
-                              0, -0.7, 1.4,
-                              0, -0.7, 1.4])
+                              0, 0.7, -1.4,
+                              0, 0.7, -1.4])
 
-urdf_path = "motion_imitation/robots/simulation/solo12.urdf"
+urdf_path = "simulation/solo12.urdf"
 
 
 def analytical_leg_jacobian(leg_angles, leg_id):
@@ -94,7 +94,7 @@ class Solo12(minitaur.Minitaur):
 
     MPC_BODY_MASS = 108 / 9.8
     MPC_BODY_INERTIA = np.array((0.017, 0, 0, 0, 0.057, 0, 0, 0, 0.064)) * 4.
-    MPC_BODY_HEIGHT = 0.24
+    MPC_BODY_HEIGHT = 0.20
     MPC_VELOCITY_MULTIPLIER = 0.5
 
     def __init__(
@@ -212,7 +212,7 @@ class Solo12(minitaur.Minitaur):
         if reset_time <= 0:
             return
 
-        for _ in range(500):
+        for _ in range(1000):
             self._StepInternal(init_motor_angles, motor_control_mode=robot_config.MotorControlMode.POSITION)
 
         if default_motor_angles is not None:
@@ -362,8 +362,7 @@ class Solo12(minitaur.Minitaur):
         motor_angles = self.GetMotorAngles().reshape((4, 3))
         foot_positions = np.zeros((4, 3))
         for i in range(4):
-            foot_positions[i] = self.kinematic.forward_kinematics(motor_angles[i],
-                                                                  l_hip_sign=(-1) ** (i + 1))
+            foot_positions[i] = self.kinematic.forward_kinematics(motor_angles[i], l_hip_sign=(-1) ** (i + 1))
         return foot_positions + hip_offsets
 
     def ComputeJacobian(self, leg_id):
