@@ -66,6 +66,7 @@ class OpenloopGaitGenerator(gait_generator.GaitGenerator):
             detection when phase switches. For example, a swing foot at at the
             beginning of the gait cycle might be still on the ground.
         """
+        # delete here
         print(stance_duration)
         print(duty_factor)
         print(initial_leg_phase)
